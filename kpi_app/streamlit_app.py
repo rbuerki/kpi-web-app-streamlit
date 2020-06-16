@@ -1,15 +1,12 @@
 import streamlit as st
 import helpers
 
-st.title('KPI Sheet')
 
-data = helpers.load_data("../data/raw/mock_data.csv")
-data = helpers.trim_strings(data)
-dates = helpers.get_dates(data)
-data = helpers.filter_data(data, dates)
-data = helpers.pivot_dates(data)
-data = helpers.calculate_diff_12months(data)
+st.title("KPI Sheet")
 
+
+data_full = helpers.load_data("../data/test/mock_preprocessed.csv")
+data = helpers.create_df_display(data_full)
 
 # FILTER SECTION
 filter_dict = helpers.get_filter_dict(data)
