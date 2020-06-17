@@ -165,6 +165,19 @@ def create_df_with_actual_period_only(df: pd.DataFrame) -> pd.DataFrame:
     return df_display
 
 
+# FILTERING FOR DRILLDOWN (VERSION 1, VIEWS KPI AND ENTITY)
+
+
+def get_filter_dict(df):
+    df_filter = df[["agg_level_value", "agg_level_id"]].drop_duplicates()
+    filter_dict = {k.strip(): v for k, v in df_filter.itertuples(index=False)}
+    return filter_dict
+
+
+def get_filter_values_1(filter_dict):
+    return [k for k, v in filter_dict.items() if v in (1, 4)]
+
+
 def filter_for_display(
     df: pd.DataFrame,
     mandant: Optional[str] = None,
@@ -174,13 +187,15 @@ def filter_for_display(
     """Filter df_display according tho the filters set in the front end."""
     # TODO complete filter logics (kpi not implemented yet)
     if mandant is not None and mandant != "Overall":
-        # mandant = mandant.rstrip()
         df = df.loc[df["mandant"] == mandant]
     if agg_level is not None:
         df = df.loc[df["agg_level_id"].isin(agg_level)]
     if kpi is not None:
         df = df.loc[df["kpi"] == kpi]
     return df
+
+
+# VIEW WITH DFs of ENTITY PER KPI
 
 
 def create_dict_of_df_per_kpi(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
@@ -200,16 +215,6 @@ def arrange_for_display_per_kpi(df: pd.DataFrame) -> pd.DataFrame:
     display_df.columns = ["Entität", "Wert", "Abw 12Mte"]
     display_df = display_df.reset_index(drop=True)
     return display_df
-
-
-def get_filter_dict(df):
-    df_filter = df[["agg_level_value", "agg_level_id"]].drop_duplicates()
-    filter_dict = {k.strip(): v for k, v in df_filter.itertuples(index=False)}
-    return filter_dict
-
-
-def get_filter_values_1(filter_dict):
-    return [k for k, v in filter_dict.items() if v in (1, 4)]
 
 
 def set_bold_font(val: Any) -> str:
@@ -237,3 +242,30 @@ def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
     display_df.columns = ["KPI", "Wert", "Abw 12Mte"]
     display_df = display_df.reset_index(drop=True)
     return display_df
+
+
+# ALTERNATIVE FILTERING (FULL-FLEX)
+
+
+def get_filter_lists_full_flex(df: pd.DataFrame) -> Tuple[list, list]:
+    """Return two list with unique values for kpis and entities from dataframe."""
+    kpi_list = list(df["kpi"].unique())
+    kpi_list.insert(0, "all")
+    entity_list = list(df["agg_level_value"].unique())
+    entity_list.insert(0, "all")
+    return kpi_list, entity_list
+
+
+# TODO: Check for non-existing combinations - see how I did for Ver. 1
+
+
+def filter_for_display_full_flex(
+    df: pd.DataFrame, entity_list: List[str] = ["all"], kpi_list: List[str] = ["all"],
+) -> pd.DataFrame:
+    """Filter df_display according tho the filters set in the front end."""
+    # TODO complete filter logics (kpi not implemented yet)
+    if entity_list != ["all"]:
+        df = df.loc[df["agg_level_value"].isin(entity_list)]
+    if kpi_list != ["all"]:
+        df = df.loc[df["kpi"].isin(kpi_list)]
+    return df
