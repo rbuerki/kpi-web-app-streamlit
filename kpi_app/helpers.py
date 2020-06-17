@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from data_dicts import kpi_dict  # when running
 
 @st.cache()
 def load_data(path: str) -> pd.DataFrame:
-    """Load dataframe."""
+    """Load data and return a dataframe."""
     try:
         df = pd.read_csv(
             path,
@@ -74,6 +74,15 @@ def impute_missing_profile_values(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def replace_kpi_ids_with_kpi_names(
+    df: pd.DataFrame, kpi_dict: Dict[int, str]
+) -> pd.DataFrame:
+    """Map values in column kpi_id and change the column name."""
+    df["kpi_id"] = df["kpi_id"].apply(lambda x: kpi_dict.get(x, np.nan))
+    df.rename(columns={"kpi_id": "kpi"}, inplace=True)
+    return df
+
+
 def fix_two_periods_for_comparison(
     df: pd.DataFrame,
 ) -> Tuple[np.datetime64, np.datetime64]:
@@ -97,7 +106,7 @@ def create_df_diff(
 def pivot_df_diff_periods_to_columns(df_diff: pd.DataFrame) -> pd.DataFrame:
     """Create a column each for the now and then periods."""
     df_diff = df_diff.pivot_table(
-        index=["kpi_id", "period_id", "agg_level_id", "agg_level_value", "mandant"],
+        index=["kpi", "period_id", "agg_level_id", "agg_level_value", "mandant"],
         columns="calculation_date",
     ).reset_index()
     # TODO - this needs an assert that I have the right column order!
@@ -119,7 +128,7 @@ def append_diff_value_to_original_df(df: pd.DataFrame, df_diff: pd.DataFrame):
         df,
         df_diff,
         how="left",
-        on=["kpi_id", "period_id", "agg_level_id", "agg_level_value", "mandant"],
+        on=["kpi", "period_id", "agg_level_id", "agg_level_value", "mandant"],
     )
     return df
 
@@ -137,6 +146,7 @@ def remove_diff_values_for_non_actual_data(
 # df = trim_strings(df)
 # df = impute_missing_mandant_values(df)
 # df = impute_missing_profile_values(df)
+# df = replace_kpi_ids_with_kpi_names(df, kpi_dict)
 # periods_diff = fix_two_periods_for_comparison(df)
 # df_diff = create_df_diff(df, periods_diff)
 # df_diff = pivot_df_diff_periods_to_columns(df_diff)
@@ -146,7 +156,7 @@ def remove_diff_values_for_non_actual_data(
 # df.to_csv("../data/test/mock_preprocessed.csv", index=False)
 
 
-def create_df_display(df: pd.DataFrame) -> pd.DataFrame:
+def create_df_with_actual_period_only(df: pd.DataFrame) -> pd.DataFrame:
     """Create a base dataframe for display that contains only data for the actual period (max date value)."""
     max_date = df["calculation_date"].max()
     df_display = df.loc[df["calculation_date"] == max_date]
@@ -155,34 +165,39 @@ def create_df_display(df: pd.DataFrame) -> pd.DataFrame:
     return df_display
 
 
-def filter_for_display(df, mandant=None, agg_level=None, kpi_id=None):
-    """In case specific filters are set - defaults should not be None probably."""
-    # TODO complete filter logics
+def filter_for_display(
+    df: pd.DataFrame,
+    mandant: Optional[str] = None,
+    agg_level: Optional[List[str]] = None,
+    kpi: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    """Filter df_display according tho the filters set in the front end."""
+    # TODO complete filter logics (kpi not implemented yet)
     if mandant is not None and mandant != "Overall":
         # mandant = mandant.rstrip()
         df = df.loc[df["mandant"] == mandant]
     if agg_level is not None:
         df = df.loc[df["agg_level_id"].isin(agg_level)]
-    if kpi_id is not None:
-        df = df.loc[df["kpi_id"] == kpi_id]
+    if kpi is not None:
+        df = df.loc[df["kpi"] == kpi]
     return df
 
 
-def iter_through_kpi_ids(df):
+def create_dict_of_df_per_kpi(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """Title says it."""
     display_dict = {}
-    for kpi_id in df["kpi_id"]:
-        df_kpi = df.loc[df["kpi_id"] == kpi_id]
-        kpi_name = kpi_dict[kpi_id]
-        display_dict[kpi_name] = df_kpi
+    for kpi in df["kpi"]:
+        df_kpi = df.loc[df["kpi"] == kpi]
+        display_dict[kpi] = df_kpi
     return display_dict
 
 
-def style_for_display(df):
+def arrange_for_display_per_kpi(df: pd.DataFrame) -> pd.DataFrame:
     """Rearange and filter columns for display."""
     # df.sort_values(["agg_level_id", "agg_level_value"], inplace=True)
     cols = ["agg_level_value", "value", "diff_value"]
     display_df = df[cols].copy()
-    display_df.columns = ["Entität", "Wert", "Abw 12Mte (%)"]
+    display_df.columns = ["Entität", "Wert", "Abw 12Mte"]
     display_df = display_df.reset_index(drop=True)
     return display_df
 
@@ -195,3 +210,30 @@ def get_filter_dict(df):
 
 def get_filter_values_1(filter_dict):
     return [k for k, v in filter_dict.items() if v in (1, 4)]
+
+
+def set_bold_font(val: Any) -> str:
+    """Take a scalar and return a string with css property `"font-weight: bold"`."""
+    return "font-weight: bold"
+
+
+# ALTERNATIVE VIEW WITH DFs of KPI PER ENTITY
+
+
+def create_dict_of_df_per_entity(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """Title says it."""
+    display_dict = {}
+    for entity in df["agg_level_value"]:
+        df_entity = df.loc[df["agg_level_value"] == entity]
+        display_dict[entity] = df_entity
+    return display_dict
+
+
+def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
+    """Rearange and filter columns for display."""
+    # df.sort_values(["agg_level_id", "agg_level_value"], inplace=True)
+    cols = ["kpi", "value", "diff_value"]
+    display_df = df[cols].copy()
+    display_df.columns = ["KPI", "Wert", "Abw 12Mte"]
+    display_df = display_df.reset_index(drop=True)
+    return display_df
