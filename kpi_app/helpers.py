@@ -32,6 +32,9 @@ def load_data(path: str) -> pd.DataFrame:
     return df
 
 
+# DATA PREPROCESSING
+
+
 def trim_strings(df: pd.DataFrame) -> pd.DataFrame:
     """Trim whitespace from right end of every string in the dataframe."""
     df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
@@ -156,12 +159,23 @@ def remove_diff_values_for_non_actual_data(
 # df.to_csv("../data/test/mock_preprocessed.csv", index=False)
 
 
+# SELECT DISPLAY DATA
+
+
 def create_df_with_actual_period_only(df: pd.DataFrame) -> pd.DataFrame:
     """Create a base dataframe for display that contains only data for the actual period (max date value)."""
     max_date = df["calculation_date"].max()
     df_display = df.loc[df["calculation_date"] == max_date]
-    # TODO: FOR DEMO I ALSO FILTER THE period_id. THIS WILL HAVE TO CHANGE WHEN THE DATAMODEL IS FIX.
-    df_display = df_display.loc[df_display["period_id"] == 2]
+    return df_display
+
+
+def select_monthly_vs_ytd(df: pd.DataFrame, result_period: str) -> pd.DataFrame:
+    "Filter if monthly or ytd values are to displayed, return the filtered dataframe."
+    # TODO: Check the ID values in the final data model, 6 doesn't exist yet
+    if result_period.startswith("M"):
+        df_display = df.loc[df["period_id"].isin([1, 2])]
+    else:
+        df_display = df.loc[df["period_id"].isin([5, 6])]
     return df_display
 
 
