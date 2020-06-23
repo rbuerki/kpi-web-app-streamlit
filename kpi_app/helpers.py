@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from data_dicts import kpi_dict  # when running
+import data_dicts
 
 # from kpi_app.data_dicts import kpi_dict  # for testing
 
@@ -33,6 +33,7 @@ def load_data(path: str) -> pd.DataFrame:
 
 
 # DATA PREPROCESSING
+# ------------------
 
 
 def trim_strings(df: pd.DataFrame) -> pd.DataFrame:
@@ -43,7 +44,9 @@ def trim_strings(df: pd.DataFrame) -> pd.DataFrame:
 
 def impute_missing_mandant_values(df: pd.DataFrame) -> pd.DataFrame:
     """Impute the expected missing values for mandant."""
-    df["mandant"] = np.where(df["agg_level_id"].isin([1, 2]), "Overall", df["mandant"])
+    df["mandant"] = np.where(
+        df["agg_level_id"].isin([1, 2]), "Overall", df["mandant"]
+    )
     df["mandant"] = np.where(
         (df["agg_level_id"].isin([3, 4])), df["agg_level_value"], df["mandant"]
     )
@@ -61,7 +64,12 @@ def impute_missing_mandant_values(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def impute_missing_profile_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute the expected missing values for profile."""
+    """Impute the expected missing values for profile.
+
+    On the higher agg_levels 2, 3, 4 the value for `mandant` is
+    not provided, so we have to impute the (cleaned) string form
+    "agg_level_value".
+    """
     df["profile"] = np.where(
         (df["agg_level_id"].isin([2, 3, 4]))
         & (df["agg_level_value"].str.endswith("KK")),
@@ -80,7 +88,10 @@ def impute_missing_profile_values(df: pd.DataFrame) -> pd.DataFrame:
 def replace_kpi_ids_with_kpi_names(
     df: pd.DataFrame, kpi_dict: Dict[int, str]
 ) -> pd.DataFrame:
-    """Map values in column kpi_id and change the column name."""
+    """Map values in column `kpi_id` with kpi_names and change
+    the column name to `kpi`.
+    """
+    kpi_dict = data_dicts.kpi_dict
     df["kpi_id"] = df["kpi_id"].apply(lambda x: kpi_dict.get(x, np.nan))
     df.rename(columns={"kpi_id": "kpi"}, inplace=True)
     return df
@@ -89,7 +100,8 @@ def replace_kpi_ids_with_kpi_names(
 def fix_two_periods_for_comparison(
     df: pd.DataFrame,
 ) -> Tuple[np.datetime64, np.datetime64]:
-    """Fix the date of the actual period (last full month), and for the same 12 months back."""
+    """Return the date of the actual period (last available full month,
+    called "now"), and the date for the same month one year back ("then")."""
     date_now = df["calculation_date"].max()
     date_then = dt.datetime(date_now.year - 1, date_now.month, date_now.day)
     return date_now, date_then
@@ -98,18 +110,22 @@ def fix_two_periods_for_comparison(
 def create_df_diff(
     df: pd.DataFrame, periods_diff: Tuple[np.datetime64, np.datetime64]
 ) -> pd.DataFrame:
-    """Create a dataframe for calculation of the comparision now to then."""
+    """Create a temporary dataframe for calculation of the
+    difference from "now" to "then"."""
     df_diff = df.loc[df["calculation_date"].isin(periods_diff)].copy()
-    # # TODO: Check if I have selected the right period_ids. This will change in the data model!
-    # df = df.loc[df["period_id"].isin(1, 2, 6)]
-    # df.drop("period_id", axis=1, inplace=True)
     return df_diff
 
 
 def pivot_df_diff_periods_to_columns(df_diff: pd.DataFrame) -> pd.DataFrame:
-    """Create a column each for the now and then periods."""
+    """Create a column each for the `now` and `then` periods."""
     df_diff = df_diff.pivot_table(
-        index=["kpi", "period_id", "agg_level_id", "agg_level_value", "mandant"],
+        index=[
+            "kpi",
+            "period_id",
+            "agg_level_id",
+            "agg_level_value",
+            "mandant",
+        ],
         columns="calculation_date",
     ).reset_index()
     # TODO - this needs an assert that I have the right column order!
@@ -120,13 +136,22 @@ def pivot_df_diff_periods_to_columns(df_diff: pd.DataFrame) -> pd.DataFrame:
 
 
 def calculate_diff_now_to_then(df_diff: pd.DataFrame) -> pd.DataFrame:
-    """Create a new column containing the difference in values of "now" and "then"."""
+    """Create a new column `diff_value` containing the difference
+    in percentage points of `now` and `then`.
+    """
     df_diff["diff_value"] = (df_diff["now"] / df_diff["then"]) - 1
     df_diff.drop(["now", "then"], axis=1, inplace=True)
     return df_diff
 
 
-def append_diff_value_to_original_df(df: pd.DataFrame, df_diff: pd.DataFrame):
+def append_diff_value_column_to_original_df(
+    df: pd.DataFrame, df_diff: pd.DataFrame
+) -> pd.DataFrame:
+    """Left join to append the `diff_value` column to the original dataframe.
+
+    Note: As for simplicity's sake we do not merge on `calculation_date`
+    column we will have to remove the values from all but the actual period.
+    """
     df = pd.merge(
         df,
         df_diff,
@@ -139,8 +164,11 @@ def append_diff_value_to_original_df(df: pd.DataFrame, df_diff: pd.DataFrame):
 def remove_diff_values_for_non_actual_data(
     df: pd.DataFrame, now: np.datetime64
 ) -> pd.DataFrame:
-    """Remove the diff values for all datapoints that are not of actual period. They are wrong."""
-    df["diff_value"] = np.where(df["calculation_date"] != now, np.nan, df["diff_value"])
+    """Remove the values in `diff_value` for all rows which
+    are not in the actual period."""
+    df["diff_value"] = np.where(
+        df["calculation_date"] != now, np.nan, df["diff_value"]
+    )
     return df
 
 
@@ -154,23 +182,25 @@ def remove_diff_values_for_non_actual_data(
 # df_diff = create_df_diff(df, periods_diff)
 # df_diff = pivot_df_diff_periods_to_columns(df_diff)
 # df_diff = calculate_diff_now_to_then(df_diff)
-# df = append_diff_value_to_original_df(df, df_diff)
+# df = append_diff_value_column_to_original_df(df, df_diff)
 # df = remove_diff_values_for_non_actual_data(df, periods_diff[0])
 # df.to_csv("../data/test/mock_preprocessed.csv", index=False)
 
 
 # SELECT DISPLAY DATA
+# -------------------
 
 
 def create_df_with_actual_period_only(df: pd.DataFrame) -> pd.DataFrame:
-    """Create a base dataframe for display that contains only data for the actual period (max date value)."""
+    """Create a base dataframe for display that contains
+    only data for the actual period (max date value)."""
     max_date = df["calculation_date"].max()
     df_display = df.loc[df["calculation_date"] == max_date]
     return df_display
 
 
 def select_monthly_vs_ytd(df: pd.DataFrame, result_period: str) -> pd.DataFrame:
-    "Filter if monthly or ytd values are to displayed, return the filtered dataframe."
+    "Filter if monthly or ytd values are to be displayed, return the filtered dataframe."
     # TODO: Check the ID values in the final data model, 6 doesn't exist yet
     if result_period.startswith("M"):
         df_display = df.loc[df["period_id"].isin([1, 2])]
@@ -179,7 +209,7 @@ def select_monthly_vs_ytd(df: pd.DataFrame, result_period: str) -> pd.DataFrame:
     return df_display
 
 
-# FILTERING FOR DRILLDOWN (VERSION 1, VIEWS KPI AND ENTITY)
+# FILTERING FOR DRILLDOWN (VERSION 1A & 1B, VIEWS KPI AND ENTITY)
 
 
 def get_filter_dict(df):
@@ -209,13 +239,20 @@ def filter_for_display(
     return df
 
 
-# VIEW WITH DFs of ENTITY PER KPI
+# VERSION 1A: VIEW WITH DFs of ENTITY PER KPI
 
 
-def create_dict_of_df_per_kpi(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+def create_dict_of_df_per_kpi(
+    df: pd.DataFrame, selected_kpi: List
+) -> Dict[str, pd.DataFrame]:
     """Title says it."""
     display_dict = {}
-    for kpi in df["kpi"]:
+    if selected_kpi == ["all"] or selected_kpi == []:
+        selected_kpi = df["kpi"].unique()
+    else:
+        if "all" in selected_kpi:
+            selected_kpi.remove("all")
+    for kpi in selected_kpi:
         df_kpi = df.loc[df["kpi"] == kpi]
         display_dict[kpi] = df_kpi
     return display_dict
@@ -236,7 +273,7 @@ def set_bold_font(val: Any) -> str:
     return "font-weight: bold"
 
 
-# ALTERNATIVE VIEW WITH DFs of KPI PER ENTITY
+# VERSION 1B: VIEW WITH DFs of KPI PER ENTITY
 
 
 def create_dict_of_df_per_entity(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
@@ -258,7 +295,7 @@ def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
     return display_df
 
 
-# ALTERNATIVE FILTERING (FULL-FLEX)
+# VERSION FLEX: FULL-FLEX FILTERING
 
 
 def get_filter_lists_full_flex(df: pd.DataFrame) -> Tuple[list, list]:
@@ -271,10 +308,10 @@ def get_filter_lists_full_flex(df: pd.DataFrame) -> Tuple[list, list]:
 
 
 # TODO: Check for non-existing combinations - see how I did for Ver. 1
-
-
 def filter_for_display_full_flex(
-    df: pd.DataFrame, entity_list: List[str] = ["all"], kpi_list: List[str] = ["all"],
+    df: pd.DataFrame,
+    entity_list: List[str] = ["all"],
+    kpi_list: List[str] = ["all"],
 ) -> pd.DataFrame:
     """Filter df_display according tho the filters set in the front end."""
     # TODO complete filter logics (kpi not implemented yet)
