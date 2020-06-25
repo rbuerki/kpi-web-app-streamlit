@@ -2,16 +2,16 @@ import numpy as np
 
 # import pandas as pd
 
-from kpi_app.helpers import impute_missing_mandant, impute_missing_profile
+from src import helpers
 
 
 def test_impute_missing_mandant(data):
-    df = impute_missing_mandant(data)
+    df = helpers.impute_missing_mandant_values(data)
     assert (df["mandant"].values == np.array(["Overall", "Overall"])).all()
 
 
 def test_impute_missing_profile(data):
-    df = impute_missing_profile(data)
+    df = helpers.impute_missing_profile_values(data)
     assert (df["profile"].values == np.array(["#NV", "CC"])).all()
 
 

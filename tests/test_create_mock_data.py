@@ -1,7 +1,7 @@
 import datetime as dt
 import pandas as pd
 
-from data.create_mock_data import (
+from .data.create_mock_data import (
     multiply_kpis,
     generate_periods,
     randomize_values,
