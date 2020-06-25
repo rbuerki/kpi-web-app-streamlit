@@ -1,17 +1,6 @@
-# Used for specifying Pytest fixtures, hooks or loading external plugins, see here:
-# https://towardsdatascience.com/pytest-features-that-you-need-in-your-testing-life-31488dc7d9eb
-
-# import logging
 import numpy as np
 import pandas as pd
-import os
-import sys
 import pytest
-
-# Append abs path of the module to the sys.path(), solving some import problems
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# LOGGER = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -41,7 +30,10 @@ def data():
 # @pytest.fixture(scope="module")
 # def mock_dataframe_1():
 #     mock_df = pd.read_csv(
-#         "mock_data.csv", sep=";", engine="python", parse_dates=["calculation_date"]
+#         "mock_data.csv",
+#         sep=";",
+#         engine="python",
+#         parse_dates=["calculation_date"],
 #     )
 #     return mock_df.head()
 
