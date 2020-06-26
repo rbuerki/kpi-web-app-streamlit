@@ -7,10 +7,8 @@ import streamlit as st
 
 import data_dicts
 
-# from kpi_app.data_dicts import kpi_dict  # for testing
 
-
-@st.cache()
+# @st.cache()
 def load_data(path: str) -> pd.DataFrame:
     """Load data and return a dataframe."""
     try:
@@ -128,8 +126,7 @@ def pivot_df_diff_periods_to_columns(df_diff: pd.DataFrame) -> pd.DataFrame:
         ],
         columns="calculation_date",
     ).reset_index()
-    # TODO - this needs an assert that I have the right column order!
-    # print(df_diff.columns)
+    # TODO - this needs an Assertion that now date is bigger than then date
     cols = list(df_diff.columns.get_level_values(0))[:-2] + ["then", "now"]
     df_diff.columns = cols
     return df_diff
@@ -172,21 +169,6 @@ def remove_diff_values_for_non_actual_data(
     return df
 
 
-# df = load_data("../data/test/mock_13months_10kpi.csv")
-# # df = df.iloc[:10000, :].copy()
-# df = trim_strings(df)
-# df = impute_missing_mandant_values(df)
-# df = impute_missing_profile_values(df)
-# df = replace_kpi_ids_with_kpi_names(df, kpi_dict)
-# periods_diff = fix_two_periods_for_comparison(df)
-# df_diff = create_df_diff(df, periods_diff)
-# df_diff = pivot_df_diff_periods_to_columns(df_diff)
-# df_diff = calculate_diff_now_to_then(df_diff)
-# df = append_diff_value_column_to_original_df(df, df_diff)
-# df = remove_diff_values_for_non_actual_data(df, periods_diff[0])
-# df.to_csv("../data/test/mock_preprocessed.csv", index=False)
-
-
 # SELECT DISPLAY DATA
 # -------------------
 
@@ -200,7 +182,7 @@ def create_df_with_actual_period_only(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def select_monthly_vs_ytd(df: pd.DataFrame, result_period: str) -> pd.DataFrame:
-    "Filter if monthly or ytd values are to be displayed, return the filtered dataframe."
+    "Filter if monthly or ytd values are to be displayed, return filtered dataframe."
     # TODO: Check the ID values in the final data model, 6 doesn't exist yet
     if result_period.startswith("M"):
         df_display = df.loc[df["period_id"].isin([1, 2])]
@@ -309,9 +291,7 @@ def get_filter_lists_full_flex(df: pd.DataFrame) -> Tuple[list, list]:
 
 # TODO: Check for non-existing combinations - see how I did for Ver. 1
 def filter_for_display_full_flex(
-    df: pd.DataFrame,
-    entity_list: List[str] = ["all"],
-    kpi_list: List[str] = ["all"],
+    df: pd.DataFrame, entity_list: List[str], kpi_list: List[str],
 ) -> pd.DataFrame:
     """Filter df_display according tho the filters set in the front end."""
     # TODO complete filter logics (kpi not implemented yet)
