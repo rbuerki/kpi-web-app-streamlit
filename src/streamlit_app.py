@@ -16,7 +16,7 @@ filter_dict = helpers.get_filter_dict(data_actual)
 filter_values_1 = helpers.get_filter_values_1(filter_dict)
 kpi_list, _ = helpers.get_filter_lists_full_flex(data_actual)
 filter_result_period = st.sidebar.radio(
-    "Choose Result Period:", options=["Month", "Year To Date (YTD)"]
+    "Choose Result Period:", options=["Single Month", "Year To Date (YTD)"]
 )
 filter_dim = st.sidebar.radio(
     "Choose dimension:", options=["Product", "Profile"]
