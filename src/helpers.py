@@ -8,7 +8,7 @@ import streamlit as st
 import data_dicts
 
 
-# @st.cache()
+# @st.cache()  TODO: move to app ... -> see article to be sure
 def load_data(path: str) -> pd.DataFrame:
     """Load data and return a dataframe."""
     try:
