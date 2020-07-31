@@ -1,10 +1,10 @@
 # App "KPI Sheet"
+July 2020, WIP
 
 ## TODO
 
 - [ ] Index ausblenden
 - [ ] export excel sort by entität (oder passend), spaltenbezeichnungen
->>>>>>> dev
 
 ## Considerations for Deployment
 
