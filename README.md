@@ -1,6 +1,11 @@
 # App "KPI Sheet"
 July 2020, WIP
 
+```python
+streamlit run src/app.py
+```
+
+
 ## TODO
 
 - [ ] Index ausblenden
