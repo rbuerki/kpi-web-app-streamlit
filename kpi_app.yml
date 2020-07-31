@@ -1,0 +1,45 @@
+name: kpi_app
+channels:
+  - anaconda
+  - plotly
+  - conda-forge
+  - defaults
+dependencies:
+  - python
+  # Code formatters & linters
+  - black
+  - autopep8
+  - flake8
+  - flake8-bugbear
+  - mypy
+  # Jupyter
+  - jupyter
+  - jupyter_contrib_nbextensions
+  - ipywidgets
+  # SQL packages
+  - sqlalchemy
+  - pyodbc
+  - ipython-sql
+  # Data related stuff
+  - bulwark
+  - numpy
+  - pandas
+  - pyarrow
+  - openpyxl
+  # Plotting
+  - matplotlib
+  - seaborn
+  - plotly
+  - python-cufflinks
+  # Testing and development
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - setuptools
+  - pip
+
+  - pip:
+    - pyautogui
+    - streamlit
+    - data-science-types
+    # - "O:\\DMIS Jemas\\20 Sourcecode\\90_Python\\bcag\\bcag_0.12\\dist\\bcag-0.12-py3-none-any.whl"

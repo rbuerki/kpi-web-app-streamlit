@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -8,8 +8,8 @@ import streamlit as st
 import data_dicts
 
 
-# @st.cache()  TODO: move to app ... -> see article to be sure
-def load_data(path: str) -> pd.DataFrame:
+@st.cache()
+def load_preprocessed_data(path: str) -> pd.DataFrame:
     """Load data and return a dataframe."""
     try:
         df = pd.read_csv(
@@ -30,236 +30,284 @@ def load_data(path: str) -> pd.DataFrame:
     return df
 
 
-# DATA PREPROCESSING
-# ------------------
+# FILTER DISPLAY DATA
 
 
-def trim_strings(df: pd.DataFrame) -> pd.DataFrame:
-    """Trim whitespace from right end of every string in the dataframe."""
-    df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-    return df
-
-
-def impute_missing_mandant_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute the expected missing values for mandant."""
-    df["mandant"] = np.where(
-        df["agg_level_id"].isin([1, 2]), "Overall", df["mandant"]
-    )
-    df["mandant"] = np.where(
-        (df["agg_level_id"].isin([3, 4])), df["agg_level_value"], df["mandant"]
-    )
-    df["mandant"] = np.where(
-        df["mandant"].str.endswith(" PP"),
-        df["mandant"].apply(lambda x: x[:-3]),
-        df["mandant"],
-    )
-    df["mandant"] = np.where(
-        df["mandant"].str.endswith(" KK"),
-        df["mandant"].apply(lambda x: x[:-3]),
-        df["mandant"],
-    )
-    return df
-
-
-def impute_missing_profile_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute the expected missing values for profile.
-
-    On the higher agg_levels 2, 3, 4 the value for `mandant` is
-    not provided, so we have to impute the (cleaned) string form
-    "agg_level_value".
+def _return_full_date_list(df: pd.DataFrame) -> List[str]:
+    """Return a list of all unique dates in the dataframe, as strings
+    in descending order. (This function is called within
+    get_filter_values_for_due_date.)
     """
-    df["profile"] = np.where(
-        (df["agg_level_id"].isin([2, 3, 4]))
-        & (df["agg_level_value"].str.endswith("KK")),
-        "CC",
-        df["profile"],
-    )
-    df["profile"] = np.where(
-        (df["agg_level_id"].isin([2, 3, 4]))
-        & (df["agg_level_value"].str.endswith("PP")),
-        "PP",
-        df["profile"],
-    )
-    return df
+    date_list = sorted(list(df["calculation_date"].unique()), reverse=True)
+    date_list = [str(np.datetime_as_string(x, unit="D")) for x in date_list]
+    return date_list
 
 
-def replace_kpi_ids_with_kpi_names(
-    df: pd.DataFrame, kpi_dict: Dict[int, str]
-) -> pd.DataFrame:
-    """Map values in column `kpi_id` with kpi_names and change
-    the column name to `kpi`.
+def get_filter_options_for_due_date(
+    df: pd.DataFrame, n_months_min: int = 12
+) -> List[str]:
+    """Return a list of available dates for the due date filter. Remove
+    the first n months from the full date list, so that a "minimal"
+    period remains for comparison / calculation of the diff column.
+    (n_months_min defaults to 12.)
     """
-    kpi_dict = data_dicts.kpi_dict
-    df["kpi_id"] = df["kpi_id"].apply(lambda x: kpi_dict.get(x, np.nan))
-    df.rename(columns={"kpi_id": "kpi"}, inplace=True)
-    return df
+    # Note: at the moment we hide 24 months
+    date_list = _return_full_date_list(df)
+    if n_months_min >= len(date_list):
+        raise ValueError("The observation period is too short for n_months_min.")
+    elif n_months_min == 0:
+        return date_list
+    else:
+        del date_list[-n_months_min:]
+        return date_list
 
 
-def fix_two_periods_for_comparison(
-    df: pd.DataFrame,
-) -> Tuple[np.datetime64, np.datetime64]:
-    """Return the date of the actual period (last available full month,
-    called "now"), and the date for the same month one year back ("then")."""
-    date_now = df["calculation_date"].max()
-    date_then = dt.datetime(date_now.year - 1, date_now.month, date_now.day)
-    return date_now, date_then
-
-
-def create_df_diff(
-    df: pd.DataFrame, periods_diff: Tuple[np.datetime64, np.datetime64]
-) -> pd.DataFrame:
-    """Create a temporary dataframe for calculation of the
-    difference from "now" to "then"."""
-    df_diff = df.loc[df["calculation_date"].isin(periods_diff)].copy()
-    return df_diff
-
-
-def pivot_df_diff_periods_to_columns(df_diff: pd.DataFrame) -> pd.DataFrame:
-    """Create a column each for the `now` and `then` periods."""
-    df_diff = df_diff.pivot_table(
-        index=[
-            "kpi",
-            "period_id",
-            "agg_level_id",
-            "agg_level_value",
-            "mandant",
-        ],
-        columns="calculation_date",
-    ).reset_index()
-    # TODO - this needs an Assertion that now date is bigger than then date
-    cols = list(df_diff.columns.get_level_values(0))[:-2] + ["then", "now"]
-    df_diff.columns = cols
-    return df_diff
-
-
-def calculate_diff_now_to_then(df_diff: pd.DataFrame) -> pd.DataFrame:
-    """Create a new column `diff_value` containing the difference
-    in percentage points of `now` and `then`.
-    """
-    df_diff["diff_value"] = (df_diff["now"] / df_diff["then"]) - 1
-    df_diff.drop(["now", "then"], axis=1, inplace=True)
-    return df_diff
-
-
-def append_diff_value_column_to_original_df(
-    df: pd.DataFrame, df_diff: pd.DataFrame
-) -> pd.DataFrame:
-    """Left join to append the `diff_value` column to the original dataframe.
-
-    Note: As for simplicity's sake we do not merge on `calculation_date`
-    column we will have to remove the values from all but the actual period.
-    """
-    df = pd.merge(
-        df,
-        df_diff,
-        how="left",
-        on=["kpi", "period_id", "agg_level_id", "agg_level_value", "mandant"],
-    )
-    return df
-
-
-def remove_diff_values_for_non_actual_data(
-    df: pd.DataFrame, now: np.datetime64
-) -> pd.DataFrame:
-    """Remove the values in `diff_value` for all rows which
-    are not in the actual period."""
-    df["diff_value"] = np.where(
-        df["calculation_date"] != now, np.nan, df["diff_value"]
-    )
-    return df
-
-
-# SELECT DISPLAY DATA
-# -------------------
-
-
-def create_df_with_actual_period_only(df: pd.DataFrame) -> pd.DataFrame:
-    """Create a base dataframe for display that contains
-    only data for the actual period (max date value)."""
+def return_max_date_string(df: pd.DataFrame) -> str:
+    """Return the most recent date from the loaded data."""
     max_date = df["calculation_date"].max()
-    df_display = df.loc[df["calculation_date"] == max_date]
-    return df_display
+    return max_date.strftime(format="%Y-%m-%d")
 
 
-def select_monthly_vs_ytd(df: pd.DataFrame, result_period: str) -> pd.DataFrame:
-    "Filter if monthly or ytd values are to be displayed, return filtered dataframe."
-    # TODO: Check the ID values in the final data model, 6 doesn't exist yet
-    if result_period.startswith("M"):
-        df_display = df.loc[df["period_id"].isin([1, 2])]
+def return_actual_date_string(filter_now_date: str, max_date: str) -> str:
+    """Return the date that will effectively be the "due date" for the
+    reporting. Defaults to `max_date`, but the user can choose an earlier
+    period if desired.
+    """
+    if filter_now_date < max_date:
+        return filter_now_date
     else:
-        df_display = df.loc[df["period_id"].isin([5, 6])]
-    return df_display
+        return max_date
 
 
-# FILTERING FOR DRILLDOWN (VERSION 1A & 1B, VIEWS KPI AND ENTITY)
-
-
-def get_filter_dict(df):
-    df_filter = df[["agg_level_value", "agg_level_id"]].drop_duplicates()
-    filter_dict = {k.strip(): v for k, v in df_filter.itertuples(index=False)}
-    return filter_dict
-
-
-def get_filter_values_1(filter_dict):
-    return [k for k, v in filter_dict.items() if v in (1, 4)]
-
-
-def filter_for_display(
-    df: pd.DataFrame,
-    mandant: Optional[str] = None,
-    agg_level: Optional[List[str]] = None,
-    kpi: Optional[List[str]] = None,
-) -> pd.DataFrame:
-    """Filter df_display according tho the filters set in the front end."""
-    # TODO complete filter logics (kpi not implemented yet)
-    if mandant is not None and mandant != "Overall":
-        df = df.loc[df["mandant"] == mandant]
-    if agg_level is not None:
-        df = df.loc[df["agg_level_id"].isin(agg_level)]
-    if kpi is not None:
-        df = df.loc[df["kpi"] == kpi]
+def truncate_data_to_actual_date(df: pd.DataFrame, actual_date: str) -> pd.DataFrame:
+    """Remove all periods after the actual date and return the
+    truncated data. (Note: From here on the `calcuation_date`
+    column will be in datetime format.)
+    """
+    df["calculation_date"] = pd.to_datetime(df["calculation_date"], format="%Y-%m-%d")
+    actual_date = dt.datetime.strptime(actual_date, "%Y-%m-%d")
+    df = df.loc[df["calculation_date"] <= actual_date]
     return df
 
 
-# VERSION 1A: VIEW WITH DFs of ENTITY PER KPI
+def calculate_max_n_years_available(df: pd.DataFrame) -> int:
+    """Check if the truncated data still has n * 12 + 1 months or more in
+    the `calculation_date` column. If yes, return n (years) as input
+    for further truncation. If it's lower raise an error. Max n is 3.
+    """
+    n_months_in_df = df["calculation_date"].nunique()
 
-
-def create_dict_of_df_per_kpi(
-    df: pd.DataFrame, selected_kpi: List
-) -> Dict[str, pd.DataFrame]:
-    """Title says it."""
-    display_dict = {}
-    if selected_kpi == ["all"] or selected_kpi == []:
-        selected_kpi = df["kpi"].unique()
+    if n_months_in_df >= 37:
+        return 3
+    elif n_months_in_df >= 25:
+        return 2
+    elif n_months_in_df >= 13:
+        return 1
     else:
-        if "all" in selected_kpi:
-            selected_kpi.remove("all")
-    for kpi in selected_kpi:
-        df_kpi = df.loc[df["kpi"] == kpi]
+        raise ValueError("Something went wrong. Not enough data periods loaded.")
+
+
+def truncate_data_n_years_back(
+    df: pd.DataFrame, actual_date: str, n_years: int
+) -> pd.DataFrame:
+    """Depending on `n_years`, truncate and return the data to either
+    37, 25 or 13 months back from the actual date (including it).
+    Note: 25/13 months, not 37/24/12, is necessary for proper resampling!
+
+    Note: If the result_dim "ytd" is chosen, we will have to truncate once
+    more in a later step. (Because again: we need n * n_month + 1 periods
+    for proper resampling.)
+    """
+    actual_date = dt.datetime.strptime(actual_date, "%Y-%m-%d")
+    assert actual_date == df["calculation_date"].max()
+    end_date = dt.datetime(actual_date.year - n_years, actual_date.month, 1)
+    df = df.loc[
+        (df["calculation_date"] <= actual_date) & (df["calculation_date"] > end_date)
+    ]
+    return df
+
+
+def get_filter_options_for_result_dim(n_years: int) -> List[str]:
+    """Depending on `n_years`, return a list of options for the
+    "result dimension" filter (period aggregation). If `n_years`
+    is 1, the 12-month option has to be removed (because we do not
+    have enough data for calculation of a diff column).
+    """
+    # Note: at the moment this is not used because we hide 24 months
+    options = list(data_dicts.RESULT_DIM_DICT.keys())
+    if n_years > 1:
+        return options
+    else:
+        options.remove("12 Monate rollierend")
+        return options
+
+
+def prepare_values_according_to_result_dim(
+    df: pd.DataFrame, result_dim: str, actual_date: str,
+) -> pd.DataFrame:
+    """Prepare the `value` column according to the selected result
+    dimension. If other than the default "Monat" drop all kpis that
+    cannot be cumulated and then calculate a sum for a rolling window
+    of desired length.
+    """
+    if result_dim == "Monat":
+        pass
+    else:
+        df = df.loc[~df["kpi_name"].isin(data_dicts.NO_SUM_KPI)]
+        if result_dim == "Year To Date":
+            n_months = dt.datetime.strptime(actual_date, "%Y-%m-%d").month
+        else:
+            n_months = data_dicts.RESULT_DIM_DICT[result_dim]
+        df["value"] = df["value"].rolling(window=n_months).sum()
+    return df
+
+
+def calculate_diff_column(df: pd.DataFrame, n_months_diff: int = 12) -> pd.DataFrame:
+    """Calculate the %-difference for the KPI values between two periods
+    and append it in a new colum. Return a new dataframe. The period 
+    lag defaults to 12 months.
+    """
+    df_diff = df.copy()
+    df_diff["temp_index"] = pd.to_datetime(
+        df_diff["calculation_date"], format="%Y-%m-%d"
+    )
+    df_diff.set_index("temp_index", inplace=True)
+    df_diff["diff_value"] = df_diff.groupby(
+        ["kpi_name", "period_id", "agg_level_id", "agg_level_value", "mandant"]
+    )["value"].pct_change(n_months_diff)
+    df_diff.reset_index(drop=True, inplace=True)
+    return df_diff
+
+
+def create_df_with_actual_period_only(
+    df: pd.DataFrame, actual_date: str
+) -> pd.DataFrame:
+    """Create a base dataframe for display that contains data for the
+    actual period only (user choice or max date value (default)).
+    """
+    df = df.loc[df["calculation_date"] == actual_date]
+    return df
+
+
+# FILTERING FOR MANDAND GROUPS (HIGH LEVEL, SIDEBAR)
+
+
+def get_filter_options_for_mandant_groups(df: pd.DataFrame) -> List:
+    """Return the `agg_level_values` for `agg_level_id` on the "high"
+    agg_levels (Overall and Mandant) only. Insert the options "[alle]",
+    "Overall" at the beginning of the list.
+    """
+    mandant_options = sorted(list(df["mandant"].unique()))
+    try:
+        mandant_options.remove("Overall")
+    except ValueError:
+        print("Mandant group 'Overall' not found in the data.")
+    mandant_options.insert(0, "Overall")
+    mandant_options.insert(0, "[alle]")
+    return mandant_options
+
+
+# FILTERING FOR PRODUCT DIMENSION AND DISPLAY VIEW (SIDE BAR)
+
+
+def filter_for_sidebar_selections(
+    df: pd.DataFrame,
+    filter_display_mode: str,
+    filter_product_dim: str,
+    filter_mandant: str,
+) -> pd.DataFrame:
+    """Return the dataframe filtered for the necessary `agg_level_id`
+    depending on selected product dim, mandant group and display view.
+    """
+    if filter_product_dim == "Produkt":
+        if filter_display_mode.endswith("KPI"):
+            if filter_mandant == "Overall":
+                agg_level = [1, 4]
+            else:
+                agg_level = [1, 4, 5]
+        elif filter_display_mode.endswith("Entität"):
+            if filter_mandant == "Overall":
+                agg_level = [1, 4]
+            else:
+                agg_level = [1, 4, 5]
+
+    elif filter_product_dim == "Kartenprofil":
+        if filter_display_mode.endswith("KPI"):
+            if filter_mandant == "Overall":
+                agg_level = [1, 2]
+            elif filter_mandant == "[alle]":
+                agg_level = [3]
+            else:
+                agg_level = [4, 3]
+        elif filter_display_mode.endswith("Entität"):
+            if filter_mandant == "Overall":
+                agg_level = [2]
+            else:
+                agg_level = [3]
+
+    return df.loc[df["agg_level_id"].isin(agg_level)]
+
+
+def get_filter_options_for_entities(df: pd.DataFrame, filter_mandant: str) -> List:
+    """Return a list with the available entities depending on selected
+    values for mandant group and product dimension in the side panel.
+    Add an `[alle]` option at index 0 as default.
+    """
+    if (filter_mandant == "[alle]") or (filter_mandant == "Overall"):
+        entity_options = list(df["agg_level_value"].unique())
+    else:
+        entity_options = list(
+            df.loc[df["mandant"] == filter_mandant]["agg_level_value"].unique()
+        )
+    entity_options.insert(0, "[alle]")
+    return entity_options
+
+
+def get_filter_options_for_kpi(df: pd.DataFrame) -> List:
+    """Return a list with the available kpi depending on selected
+    values for mandant group and view.
+    """
+    # TODO: No kpi groups implemented yet, this will come in a next phase
+    kpi_options = list(df["kpi_name"].unique())
+    kpi_options.insert(0, "[alle]")
+    return kpi_options
+
+
+def filter_for_entity_and_kpi(
+    df: pd.DataFrame,
+    filter_entity: List[str],
+    filter_kpi: List[str],
+    filter_mandant: str,
+) -> pd.DataFrame:
+    """Filter df_display according to the user choices on entity and kpi."""
+    # TODO in case we group kpis I have to split the two filters
+    if filter_entity != ["[alle]"]:
+        df = df.loc[df["agg_level_value"].isin(filter_entity)]
+    elif filter_mandant not in ["[alle]", "Overall"]:
+        df = df.loc[df["mandant"] == filter_mandant]
+    if filter_kpi != ["[alle]"]:
+        df = df.loc[df["kpi_name"].isin(filter_kpi)]
+    return df
+
+
+def create_dict_of_df_for_each_kpi(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """Iterate through all unique `kpi_names` in dataframe and return a
+    dict with that value as key and a dataframe subset for that kpi
+    as value.
+    """
+    display_dict = {}
+    filter_kpi = df["kpi_name"].unique()
+    for kpi in filter_kpi:
+        df_kpi = df.loc[df["kpi_name"] == kpi]
         display_dict[kpi] = df_kpi
     return display_dict
 
 
-def arrange_for_display_per_kpi(df: pd.DataFrame) -> pd.DataFrame:
-    """Rearange and filter columns for display."""
-    # df.sort_values(["agg_level_id", "agg_level_value"], inplace=True)
-    cols = ["agg_level_value", "value", "diff_value"]
-    display_df = df[cols].copy()
-    display_df.columns = ["Entität", "Wert", "Abw 12Mte"]
-    display_df = display_df.reset_index(drop=True)
-    return display_df
-
-
-def set_bold_font(val: Any) -> str:
-    """Take a scalar and return a string with css property `"font-weight: bold"`."""
-    return "font-weight: bold"
-
-
-# VERSION 1B: VIEW WITH DFs of KPI PER ENTITY
-
-
-def create_dict_of_df_per_entity(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
-    """Title says it."""
+def create_dict_of_df_for_each_entity(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """Iterate through all `agg_level_values` in dataframe and return a
+    dict with that value as key and a dataframe subset for that entity
+    as value.
+    """
     display_dict = {}
     for entity in df["agg_level_value"]:
         df_entity = df.loc[df["agg_level_value"] == entity]
@@ -267,36 +315,37 @@ def create_dict_of_df_per_entity(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     return display_dict
 
 
-def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
-    """Rearange and filter columns for display."""
-    # df.sort_values(["agg_level_id", "agg_level_value"], inplace=True)
-    cols = ["kpi", "value", "diff_value"]
-    display_df = df[cols].copy()
-    display_df.columns = ["KPI", "Wert", "Abw 12Mte"]
+def arrange_for_display_per_kpi(
+    df: pd.DataFrame, filter_product_dim: str, filter_mandant: str,
+) -> pd.DataFrame:
+    """Return a `display_df` with rearanged, renamed and selected 
+    columns for display.
+    """
+    display_df = df.copy()
+    if not filter_product_dim.startswith("Prod"):
+        # Overall is different from rest (-> higher level has lower id)
+        if not filter_mandant == "Overall":
+            display_df.sort_values(
+                ["agg_level_id", "agg_level_value"], ascending=False, inplace=True
+            )
+    cols = ["agg_level_value", "value", "diff_value"]
+    display_df = display_df[cols]
+    display_df.columns = ["Entität", "Wert", "Abw VJ"]
     display_df = display_df.reset_index(drop=True)
     return display_df
 
 
-# VERSION FLEX: FULL-FLEX FILTERING
+def set_bold_font(val: Any) -> str:
+    """Take a scalar and return a string with css property
+    `"font-weight: bold"`.
+    """
+    return "font-weight: bold"
 
 
-def get_filter_lists_full_flex(df: pd.DataFrame) -> Tuple[list, list]:
-    """Return two list with unique values for kpis and entities from dataframe."""
-    kpi_list = list(df["kpi"].unique())
-    kpi_list.insert(0, "all")
-    entity_list = list(df["agg_level_value"].unique())
-    entity_list.insert(0, "all")
-    return kpi_list, entity_list
-
-
-# TODO: Check for non-existing combinations - see how I did for Ver. 1
-def filter_for_display_full_flex(
-    df: pd.DataFrame, entity_list: List[str], kpi_list: List[str],
-) -> pd.DataFrame:
-    """Filter df_display according tho the filters set in the front end."""
-    # TODO complete filter logics (kpi not implemented yet)
-    if entity_list != ["all"]:
-        df = df.loc[df["agg_level_value"].isin(entity_list)]
-    if kpi_list != ["all"]:
-        df = df.loc[df["kpi"].isin(kpi_list)]
-    return df
+def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
+    """Rearange and filter columns for display."""
+    cols = ["kpi_name", "value", "diff_value"]
+    display_df = df[cols].copy()
+    display_df.columns = ["KPI", "Wert", "Abw VJ"]
+    display_df = display_df.reset_index(drop=True)
+    return display_df
