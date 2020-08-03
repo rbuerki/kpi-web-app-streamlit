@@ -39,17 +39,17 @@ python src/preprocess.py
 
 This procedures starts by fetching thethe necessary data from the database and then performs the necessary cleaning and transformation steps. Finally it saves the preprocessed data in CSV format.
 
----
+# TODOs and stuff
 
-## TODO's
+## Quickwins
 
 - [ ] Index ausblenden
 - [ ] export excel sort by entität (oder passend), spaltenbezeichnungen
 - [ ] Make sure that png's are saved in the right place, time-stamp the filenames
-- [ ] Implement KPI-Groups
 
 ## Backlog (ideas for next phases)
 
+- [ ] Implement KPI-Group filtering (probably in the DICT file)
 - [ ] Implement NCAs depending on framework logic
 - [ ] Highlight biggest changes, anomalies (set thresholds for absolute values)
 - [ ] Build a "plot assembler", users can choose highlighting of correlations, comparison of entities etc.
