@@ -39,7 +39,7 @@ data_actual = helpers.create_df_with_actual_period_only(data_with_diff, actual_d
 
 # SIDEBAR FILTER OPTIONS
 
-mandant_options = helpers.get_filter_options_for_mandant_groups(data_truncated_head)
+mandant_options = helpers.get_filter_options_for_mandant_groups(data_actual)
 
 
 # SIDEBAR
@@ -101,6 +101,7 @@ if filter_display_mode.endswith("KPI"):
     for k, v in display_dict.items():
         st.write(f"**{k}**")
         v = helpers.arrange_for_display_per_kpi(v, filter_product_dim, filter_mandant)
+        # v.set_index("Entität", inplace=True)  # hack to get rid of the index TODO
         st.table(
             v.style.format({"Wert": "{:,.0f}", "Abw VJ": "{:0.1%}"}).applymap(
                 helpers.set_bold_font, subset=pd.IndexSlice[v.index[v.index == 0], :],
@@ -111,6 +112,7 @@ else:
     for k, v in display_dict.items():
         st.write(f"**{k}**")
         v = helpers.arrange_for_display_per_entity(v)
+        # v.set_index("KPI", inplace=True)  # hack to get rid of the index TODO
         st.table(v.style.format({"Wert": "{:,.0f}", "Abw VJ": "{:0.1%}"}))
 
 

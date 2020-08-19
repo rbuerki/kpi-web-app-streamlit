@@ -8,7 +8,7 @@ import streamlit as st
 import data_dicts
 
 
-@st.cache()
+# @st.cache()  # TODO reacitvate!!!
 def load_preprocessed_data(path: str) -> pd.DataFrame:
     """Load data and return a dataframe."""
     try:
@@ -164,7 +164,7 @@ def prepare_values_according_to_result_dim(
 
 def calculate_diff_column(df: pd.DataFrame, n_months_diff: int = 12) -> pd.DataFrame:
     """Calculate the %-difference for the KPI values between two periods
-    and append it in a new colum. Return a new dataframe. The period 
+    and append it in a new colum. Return a new dataframe. The period
     lag defaults to 12 months.
     """
     df_diff = df.copy()
@@ -318,7 +318,7 @@ def create_dict_of_df_for_each_entity(df: pd.DataFrame) -> Dict[str, pd.DataFram
 def arrange_for_display_per_kpi(
     df: pd.DataFrame, filter_product_dim: str, filter_mandant: str,
 ) -> pd.DataFrame:
-    """Return a `display_df` with rearanged, renamed and selected 
+    """Return a `display_df` with rearanged, renamed and selected
     columns for display.
     """
     display_df = df.copy()

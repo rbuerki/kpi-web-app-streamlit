@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
@@ -91,8 +91,8 @@ def impute_missing_mandant_values(df: pd.DataFrame) -> pd.DataFrame:
     )
     # This block is necessary because of a wrong input "SimplyCC"
     df["mandant"] = np.where(
-        df["mandant"].str.endswith("yCC"),
-        df["mandant"].apply(lambda x: x[:-2]),
+        df["mandant"].str.endswith(" CH"),
+        df["mandant"].apply(lambda x: x[:-3]),
         df["mandant"],
     )
     return df
@@ -117,15 +117,36 @@ def impute_missing_cardprofile_values(df: pd.DataFrame) -> pd.DataFrame:
         "PP",
         df["cardprofile"],
     )
+    df["cardprofile"] = np.where(
+        (df["agg_level_id"].isin([2, 3, 4]))
+        & (df["agg_level_value"].str.endswith("CH")),
+        "CH",
+        df["cardprofile"],
+    )
     return df
 
 
-def expand_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def create_max_date_dict(df: pd.DataFrame) -> Dict[str, pd.Timestamp]:
+    """Return a dict with each unique `agg_level_value` as key and
+    the last month it appeared in as value. (This is necessary for
+    correcting the full expansion of the dataframe in a later step.)
+    """
+    df_max_date = df[["agg_level_value", "calculation_date"]].copy()
+    df_max_date.sort_values(["agg_level_value", "calculation_date"], inplace=True)
+    df_max_date.drop_duplicates(subset="agg_level_value", keep="last", inplace=True)
+
+    dict_max_date_per_entity = {e: d for e, d in df_max_date.itertuples(index=False)}
+    return dict_max_date_per_entity
+
+
+def expand_dataframe_fully(df: pd.DataFrame) -> pd.DataFrame:
     """Expand the dataframe to have a complete time series of
     `calculation_date` for each possible kpi, agg_level, profile combi.
-    Non-existent `value` values get a NaN entry. This step is necessary
+    Non-existent `value` values get a NaN entry. (This step is necessary
     to ensure correct difference calculation for the values in later
-    stages.
+    stages - because in rare cases it is possible that some entities
+    get no value for certain months. See dev notebook's appendix for
+    details on this issue.)
     """
     months = pd.DataFrame(
         {"calculation_date": sorted(df["calculation_date"].unique()), "merge_col": 0}
@@ -165,6 +186,23 @@ def expand_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def reduce_dataframe_to_max_date_per_entity(
+    df: pd.DataFrame, dict_max_date_per_entity: Dict[str, pd.Timestamp]
+) -> pd.DataFrame:
+    """For each entity drop all rows for calculation_dates that are
+    larger than it's max date before the full expansion. So we make sure
+    to display entities only that still exist(ed) at any point in time.
+    """
+    for entity, date_ in dict_max_date_per_entity.items():
+        df.drop(
+            df.loc[
+                (df["agg_level_value"] == entity) & (df["calculation_date"] > date_)
+            ].index,
+            inplace=True,
+        )
+    return df
+
+
 def sort_and_drop_kpi_id(df: pd.DataFrame) -> pd.DataFrame:
     """Return a properly sorted df (important for the later aggregation
     of period values!) and then drop the `kpi_id`. It won't be used
@@ -194,7 +232,9 @@ def main():
     df = prettify_kpi_names(df)
     df = impute_missing_mandant_values(df)
     df = impute_missing_cardprofile_values(df)
-    df = expand_dataframe(df)
+    dict_max_date_per_entity = create_max_date_dict(df)
+    df = expand_dataframe_fully(df)
+    df = reduce_dataframe_to_max_date_per_entity(df, dict_max_date_per_entity)
     df = sort_and_drop_kpi_id(df)
     df.to_csv("./data/preprocessed_results.csv", index=False)
 

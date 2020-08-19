@@ -39,36 +39,40 @@ python src/preprocess.py
 
 This procedures starts by fetching thethe necessary data from the database and then performs the necessary cleaning and transformation steps. Finally it saves the preprocessed data in CSV format.
 
-# TODOs and stuff
+---
 
-## Quickwins
+## TODOs and stuff
 
-- [ ] Index ausblenden
-- [ ] export excel sort by entität (oder passend), spaltenbezeichnungen
+### Quickwins & FIXES
+
+- [ ] style export excel: sort by entität (oder passend), deutsche spaltenbezeichnungen
 - [ ] Make sure that png's are saved in the right place, time-stamp the filenames
 
-## Backlog (ideas for next phases)
+### Backlog (ideas for next phases)
 
 - [ ] Implement KPI-Group filtering (probably in the DICT file)
-- [ ] Implement NCAs depending on framework logic
+- [ ] Implement NCAs, depending on framework logic (decision pending)
+- [ ] Give an option to download plots as html objects, see [here](https://discuss.streamlit.io/t/download-plotly-plot-as-html/4426)
+- [ ] Implement user authentication, see [here](https://discuss.streamlit.io/t/hide-text-input-box-after-the-input/4381)
 - [ ] Highlight biggest changes, anomalies (set thresholds for absolute values)
 - [ ] Build a "plot assembler", users can choose highlighting of correlations, comparison of entities etc.
 - [ ] Add more [Caching](https://docs.streamlit.io/en/stable/caching.html#example-4-when-an-inner-function-changes)
 - [ ] "Clear all" function to deselect all selected options, see [here](https://discuss.streamlit.io/t/reset-multiselect-to-default-values-using-a-checkbox/1941)
+- [ ] Just in case: Display URLs in df as clickable hyperlink, see [here](https://discuss.streamlit.io/t/display-urls-in-dataframe-column-as-a-clickable-hyperlink/743)
 
-## Necessary discussions for db enhancement
+### Necessary discussions for db enhancement
 
 - [ ] DB should include Budgets
 - [ ] Will ratios be calculated in the app or on the db
 
-## Assumptions
+### Assumptions
 
 - We load and preprocess data once a month (an on-the-fly approach with live data would be possible but probably makes no sense ...)
 - I only use the agg level IDs 1-5 (no F&C, no organizational stuff, no status)
 - When new KPI are added that cannot be summed up for period aggregations, I have to add them to the NO_SUM_KPI dict
 - For info only: For the 'early' periods that are more than 1 year back (and thus hidden from display) diff_calc and ytd-summation don't work properly (compare app results to `test_cases.xlsx` in the dev folder)
 
-## Fragestellungen PM ("Kick-off" 1 vom 2.7.20)
+### Fragestellungen PM ("Kick-off" 1 vom 2.7.20)
 
 - [ ] "Ich möchte eine Übersicht über den Durschnittsumsatz und die aktiven Accounts aller Produkte."
 - [ ] "Warum sehen wir eine Reduktion im Interchange-Revenue?"
@@ -79,7 +83,7 @@ This procedures starts by fetching thethe necessary data from the database and t
 - [ ] "%-Anteil revolving Customers an Gesamtkunden für die verschiedenen Produkte."
 - [ ] "Womit verdienen wir am meisten?"
 
-## Bare git And DSS Server
+### Bare git And DSS Server
 
-- Path to bare git repo: '/O/Sales and Marketing/60_Customer Analytics/30_Projekte/86_KPI_Initiative/KPI-Sheet M&S'
+- Path to bare git repo: '/O/Sales and Marketing/60_Customer Analytics/30_Projekte/86_KPI_Initiative/KPI-Sheet M&S/repo.git'
 - Env on DS Server is `kpi_app_2`, this is an env without jupyter extensions (which do not work on the DSS)
