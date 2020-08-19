@@ -124,13 +124,15 @@ if fig is not None:
 
 
 # EXCEL EXPORT
+
 excel = st.button("Download Excel")
 
 if excel:
     if fig is not None:
         download_data = df_plot
     else:
-        download_data = data
+        download_data = downloads.style_for_export_if_no_plot(data, filter_display_mode)
+
     download_path = downloads.get_download_path()
     b64, href = downloads.export_excel(download_data, download_path)
     st.markdown(href, unsafe_allow_html=True)

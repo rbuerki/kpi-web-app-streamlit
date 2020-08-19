@@ -315,11 +315,21 @@ def create_dict_of_df_for_each_entity(df: pd.DataFrame) -> Dict[str, pd.DataFram
     return display_dict
 
 
+def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
+    """Rearange and filter columns for display."""
+    cols = ["kpi_name", "value", "diff_value"]
+    display_df = df[cols].copy()
+    display_df.columns = ["KPI", "Wert", "Abw VJ"]
+    display_df = display_df.reset_index(drop=True)
+    return display_df
+
+
 def arrange_for_display_per_kpi(
     df: pd.DataFrame, filter_product_dim: str, filter_mandant: str,
 ) -> pd.DataFrame:
     """Return a `display_df` with rearanged, renamed and selected
-    columns for display.
+    columns for display. (Note: this function shares logic and code
+    with the `style_for_export` function in the `downloads`module.)
     """
     display_df = df.copy()
     if not filter_product_dim.startswith("Prod"):
@@ -340,12 +350,3 @@ def set_bold_font(val: Any) -> str:
     `"font-weight: bold"`.
     """
     return "font-weight: bold"
-
-
-def arrange_for_display_per_entity(df: pd.DataFrame) -> pd.DataFrame:
-    """Rearange and filter columns for display."""
-    cols = ["kpi_name", "value", "diff_value"]
-    display_df = df[cols].copy()
-    display_df.columns = ["KPI", "Wert", "Abw VJ"]
-    display_df = display_df.reset_index(drop=True)
-    return display_df

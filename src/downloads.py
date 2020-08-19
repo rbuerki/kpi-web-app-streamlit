@@ -32,5 +32,38 @@ def export_excel(data: pd.DataFrame, download_path: str) -> Tuple[Any, str]:
     xlsx = data.to_excel(xlsx_path, index=False)  # noqa: F841
     xlsx_data = open(xlsx_path, "rb").read()
     b64 = base64.b64encode(xlsx_data).decode("UTF-8")
-    href = f'<a href="data:file/xlsx;base64,{b64}" download={xlsx_name}>Check your downloads folder, please.</a>'  # noqa: B950
+    href = f'<a href="data:file/xlsx;base64,{b64}" download={xlsx_name}>Click here or check your downloads folder, please.</a>'  # noqa: B950
     return b64, href
+
+
+def style_for_export_if_no_plot(
+    df: pd.DataFrame, filter_display_mode: str  # , filter_mandant: str,
+) -> pd.DataFrame:
+    """Return an `export_df` with rearanged, renamed and selected
+    columns for export. (Note: this function shares logic and code
+    with the `arrange_for_display` function in the `downloads`module.)
+    """
+    export_df = df.copy()
+    # if not filter_product_dim.startswith("Prod"):
+    #     # Overall is different from rest (-> higher level has lower id)
+    #     if not filter_mandant == "Overall":
+    #         export_df.sort_values(
+    #             ["agg_level_id", "agg_level_value"], ascending=False, inplace=True
+
+    if not filter_display_mode.endswith("KPI"):
+        export_df.sort_values(
+            ["agg_level_id", "agg_level_value"], ascending=True, inplace=True
+        )
+
+    cols = [
+        "calculation_date",
+        "kpi_name",
+        "agg_level_value",
+        "mandant",
+        "value",
+        "diff_value",
+    ]
+    export_df = export_df[cols]
+    export_df.columns = ["Stichdatum", "KPI", "Entität", "Mandant", "Wert", "Abw VJ"]
+    export_df["Stichdatum"] = export_df["Stichdatum"].dt.date
+    return export_df

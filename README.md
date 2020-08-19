@@ -37,7 +37,7 @@ To facilitate distribution the data is read from an enclosed CSV file (in the `d
 python src/preprocess.py
 ```
 
-This procedures starts by fetching thethe necessary data from the database and then performs the necessary cleaning and transformation steps. Finally it saves the preprocessed data in CSV format.
+This procedure starts by fetching the result data from the database and then performs the necessary cleaning and transformation steps. Finally it saves the preprocessed data in CSV format.
 
 ---
 
@@ -45,13 +45,14 @@ This procedures starts by fetching thethe necessary data from the database and t
 
 ### Quickwins & FIXES
 
-- [ ] style export excel: sort by entität (oder passend), deutsche spaltenbezeichnungen
+- [ ] style export excel: spaltenbreiten
 - [ ] Make sure that png's are saved in the right place, time-stamp the filenames
 
 ### Backlog (ideas for next phases)
 
 - [ ] Implement KPI-Group filtering (probably in the DICT file)
 - [ ] Implement NCAs, depending on framework logic (decision pending)
+- [ ] Why not plot aggregations?
 - [ ] Give an option to download plots as html objects, see [here](https://discuss.streamlit.io/t/download-plotly-plot-as-html/4426)
 - [ ] Implement user authentication, see [here](https://discuss.streamlit.io/t/hide-text-input-box-after-the-input/4381)
 - [ ] Highlight biggest changes, anomalies (set thresholds for absolute values)
