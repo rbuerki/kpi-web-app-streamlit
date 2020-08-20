@@ -5,8 +5,15 @@ import downloads
 import helpers
 import plots
 
-st.title("KPI Sheet")
 
+st.beta_set_page_config(
+    page_title="KPI Sheet BCAG",
+    page_icon="📈",
+    layout="centered",
+    initial_sidebar_state="auto",
+)
+
+st.title("KPI Sheet")
 
 data_loaded = helpers.load_preprocessed_data("./data/preprocessed_results.csv")
 
@@ -16,7 +23,9 @@ max_date = helpers.return_max_date_string(data_loaded)
 filter_due_date = st.sidebar.selectbox("Auswahl Stichdatum:", options=date_list)
 actual_date = helpers.return_actual_date_string(filter_due_date, max_date)
 
-data_truncated_head = helpers.truncate_data_to_actual_date(data_loaded, actual_date)
+data_truncated_head = helpers.truncate_data_to_actual_date(
+    data_loaded, actual_date
+)
 
 n_years = helpers.calculate_max_n_years_available(data_truncated_head)
 
@@ -34,7 +43,9 @@ data_prepared = helpers.prepare_values_according_to_result_dim(
 )
 
 data_with_diff = helpers.calculate_diff_column(data_prepared)
-data_actual = helpers.create_df_with_actual_period_only(data_with_diff, actual_date)
+data_actual = helpers.create_df_with_actual_period_only(
+    data_with_diff, actual_date
+)
 
 
 # SIDEBAR FILTER OPTIONS
@@ -80,7 +91,9 @@ kpi_options = helpers.get_filter_options_for_kpi(data)
 filter_entity = st.multiselect(
     "Select entities:", options=entity_options, default=["[alle]"]
 )
-filter_kpi = st.multiselect("Select KPIs:", options=kpi_options, default=["[alle]"])
+filter_kpi = st.multiselect(
+    "Select KPIs:", options=kpi_options, default=["[alle]"]
+)
 
 st.write("")
 
@@ -100,11 +113,14 @@ if filter_display_mode.endswith("KPI"):
     display_dict = helpers.create_dict_of_df_for_each_kpi(data)
     for k, v in display_dict.items():
         st.write(f"**{k}**")
-        v = helpers.arrange_for_display_per_kpi(v, filter_product_dim, filter_mandant)
+        v = helpers.arrange_for_display_per_kpi(
+            v, filter_product_dim, filter_mandant
+        )
         # v.set_index("Entität", inplace=True)  # hack to get rid of the index TODO
         st.table(
             v.style.format({"Wert": "{:,.0f}", "Abw VJ": "{:0.1%}"}).applymap(
-                helpers.set_bold_font, subset=pd.IndexSlice[v.index[v.index == 0], :],
+                helpers.set_bold_font,
+                subset=pd.IndexSlice[v.index[v.index == 0], :],
             )
         )
 else:
@@ -131,7 +147,9 @@ if excel:
     if fig is not None:
         download_data = df_plot
     else:
-        download_data = downloads.style_for_export_if_no_plot(data, filter_display_mode)
+        download_data = downloads.style_for_export_if_no_plot(
+            data, filter_display_mode
+        )
 
     download_path = downloads.get_download_path()
     b64, href = downloads.export_excel(download_data, download_path)
