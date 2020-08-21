@@ -58,11 +58,11 @@ mandant_options = helpers.get_filter_options_for_mandant_groups(data_actual)
 filter_mandant = st.sidebar.selectbox(
     "Auswahl Mandanten-Gruppe:", options=mandant_options
 )
-filter_product_dim = st.sidebar.radio(
-    "Auswahl Produktsicht:", options=["Produkt", "Kartenprofil"]
-)
 filter_display_mode = st.sidebar.radio(
     "Auswahl Gruppierung für Anzeige:", options=["nach KPI", "nach Entität"]
+)
+filter_product_dim = st.sidebar.radio(
+    "Auswahl Produktsicht:", options=["Produkt", "Kartenprofil"]
 )
 st.sidebar.markdown("---")
 st.sidebar.text("")
