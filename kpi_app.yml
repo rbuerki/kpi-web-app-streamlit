@@ -42,4 +42,5 @@ dependencies:
     - pyautogui
     - streamlit
     - data-science-types
+    - xlsxwriter
     # - "O:\\DMIS Jemas\\20 Sourcecode\\90_Python\\bcag\\bcag_0.12\\dist\\bcag-0.12-py3-none-any.whl"
