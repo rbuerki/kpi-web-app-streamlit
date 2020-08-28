@@ -8,7 +8,7 @@ import streamlit as st
 import data_dicts
 
 
-@st.cache()
+@st.cache()  # TODO reacitvate!!!
 def load_preprocessed_data(path: str) -> pd.DataFrame:
     """Load data and return a dataframe."""
     try:
@@ -54,9 +54,7 @@ def get_filter_options_for_due_date(
     # Note: at the moment we hide 24 months
     date_list = _return_full_date_list(df)
     if n_months_min >= len(date_list):
-        raise ValueError(
-            "The observation period is too short for n_months_min."
-        )
+        raise ValueError("The observation period is too short for n_months_min.")
     elif n_months_min == 0:
         return date_list
     else:
@@ -81,16 +79,12 @@ def return_actual_date_string(filter_now_date: str, max_date: str) -> str:
         return max_date
 
 
-def truncate_data_to_actual_date(
-    df: pd.DataFrame, actual_date: str
-) -> pd.DataFrame:
+def truncate_data_to_actual_date(df: pd.DataFrame, actual_date: str) -> pd.DataFrame:
     """Remove all periods after the actual date and return the
     truncated data. (Note: From here on the `calcuation_date`
     column will be in datetime format.)
     """
-    df["calculation_date"] = pd.to_datetime(
-        df["calculation_date"], format="%Y-%m-%d"
-    )
+    df["calculation_date"] = pd.to_datetime(df["calculation_date"], format="%Y-%m-%d")
     actual_date = dt.datetime.strptime(actual_date, "%Y-%m-%d")
     df = df.loc[df["calculation_date"] <= actual_date]
     return df
@@ -110,9 +104,7 @@ def calculate_max_n_years_available(df: pd.DataFrame) -> int:
     elif n_months_in_df >= 13:
         return 1
     else:
-        raise ValueError(
-            "Something went wrong. Not enough data periods loaded."
-        )
+        raise ValueError("Something went wrong. Not enough data periods loaded.")
 
 
 def truncate_data_n_years_back(
@@ -130,8 +122,7 @@ def truncate_data_n_years_back(
     assert actual_date == df["calculation_date"].max()
     end_date = dt.datetime(actual_date.year - n_years, actual_date.month, 1)
     df = df.loc[
-        (df["calculation_date"] <= actual_date)
-        & (df["calculation_date"] > end_date)
+        (df["calculation_date"] <= actual_date) & (df["calculation_date"] > end_date)
     ]
     return df
 
@@ -171,9 +162,7 @@ def prepare_values_according_to_result_dim(
     return df
 
 
-def calculate_diff_column(
-    df: pd.DataFrame, n_months_diff: int = 12
-) -> pd.DataFrame:
+def calculate_diff_column(df: pd.DataFrame, n_months_diff: int = 12) -> pd.DataFrame:
     """Calculate the %-difference for the KPI values between two periods
     and append it in a new colum. Return a new dataframe. The period
     lag defaults to 12 months.
@@ -259,9 +248,7 @@ def filter_for_sidebar_selections(
     return df.loc[df["agg_level_id"].isin(agg_level)]
 
 
-def get_filter_options_for_entities(
-    df: pd.DataFrame, filter_mandant: str
-) -> List:
+def get_filter_options_for_entities(df: pd.DataFrame, filter_mandant: str) -> List:
     """Return a list with the available entities depending on selected
     values for mandant group and product dimension in the side panel.
     Add an `[alle]` option at index 0 as default.
@@ -316,9 +303,7 @@ def create_dict_of_df_for_each_kpi(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     return display_dict
 
 
-def create_dict_of_df_for_each_entity(
-    df: pd.DataFrame,
-) -> Dict[str, pd.DataFrame]:
+def create_dict_of_df_for_each_entity(df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
     """Iterate through all `agg_level_values` in dataframe and return a
     dict with that value as key and a dataframe subset for that entity
     as value.
@@ -351,9 +336,7 @@ def arrange_for_display_per_kpi(
         # Overall is different from rest (-> higher level has lower id)
         if not filter_mandant == "Overall":
             display_df.sort_values(
-                ["agg_level_id", "agg_level_value"],
-                ascending=False,
-                inplace=True,
+                ["agg_level_id", "agg_level_value"], ascending=False, inplace=True
             )
     cols = ["agg_level_value", "value", "diff_value"]
     display_df = display_df[cols]
