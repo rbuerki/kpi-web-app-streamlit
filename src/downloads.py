@@ -23,19 +23,6 @@ def get_download_path() -> str:
         return os.path.join(os.path.expanduser("~"), "downloads")
 
 
-def export_excel(data: pd.DataFrame, download_path: str) -> Tuple[Any, str]:
-    """Export the actual `data` DataFrame to Excel using this solution:
-    https://discuss.streamlit.io/t/how-to-download-file-in-streamlit/1806/2
-    """
-    xlsx_name = f"kpi_export_{dt.datetime.strftime(dt.datetime.now(), '%Y-%m-%d-%H-%M-%S')}.xlsx"  # noqa: B950
-    xlsx_path = Path(download_path, xlsx_name)
-    xlsx = data.to_excel(xlsx_path, index=False)  # noqa: F841
-    xlsx_data = open(xlsx_path, "rb").read()
-    b64 = base64.b64encode(xlsx_data).decode("UTF-8")
-    href = f'<a href="data:file/xlsx;base64,{b64}" download={xlsx_name}>Click here or check your downloads folder, please.</a>'  # noqa: B950
-    return b64, href
-
-
 def style_for_export_if_no_plot(
     df: pd.DataFrame, filter_display_mode: str  # , filter_mandant: str,
 ) -> pd.DataFrame:
@@ -67,3 +54,39 @@ def style_for_export_if_no_plot(
     export_df.columns = ["Stichdatum", "KPI", "Entität", "Mandant", "Wert", "Abw VJ"]
     export_df["Stichdatum"] = export_df["Stichdatum"].dt.date
     return export_df
+
+
+# def export_excel(data: pd.DataFrame, download_path: str) -> Tuple[Any, str]:
+#     """Export the actual `data` DataFrame to Excel using this solution:
+#     https://discuss.streamlit.io/t/how-to-download-file-in-streamlit/1806/2
+#     """
+#     xlsx_name = f"kpi_export_{dt.datetime.strftime(dt.datetime.now(), '%Y-%m-%d-%H-%M-%S')}.xlsx"  # noqa: B950
+#     xlsx_path = Path(download_path, xlsx_name)
+#     xlsx = data.to_excel(xlsx_path, index=False)  # noqa: F841
+#     xlsx_data = open(xlsx_path, "rb").read()
+#     b64 = base64.b64encode(xlsx_data).decode("UTF-8")
+#     href = f'<a href="data:file/xlsx;base64,{b64}" download={xlsx_name}>Click here or check your downloads folder, please.</a>'  # noqa: B950
+#     return b64, href
+
+
+def export_excel(data: pd.DataFrame, download_path: str) -> Tuple[Any, str]:
+    """Export the actual `data` DataFrame to Excel using this solution:
+    https://discuss.streamlit.io/t/how-to-download-file-in-streamlit/1806/2
+    """
+    xlsx_name = f"kpi_export_{dt.datetime.strftime(dt.datetime.now(), '%Y-%m-%d-%H-%M-%S')}.xlsx"  # noqa: B950
+    xlsx_path = Path(download_path, xlsx_name)
+    writer = pd.ExcelWriter(xlsx_path)
+    xlsx = data.to_excel(
+        writer, sheet_name="kpi-app-export", index=False, float_format="%.3f"
+    )  # noqa: F841
+
+    sheet = writer.sheets["kpi-app-export"]
+    for pos, col in enumerate(data):
+        max_len = data[col].astype(str).map(len).max()
+        sheet.set_column(pos, pos, max([15, max_len + 1]))
+    writer.save()
+
+    xlsx_data = open(xlsx_path, "rb").read()
+    b64 = base64.b64encode(xlsx_data).decode("UTF-8")
+    href = f'<a href="data:file/xlsx;base64,{b64}" download={xlsx_name}>Click here or check your downloads folder, please.</a>'  # noqa: B950
+    return b64, href
