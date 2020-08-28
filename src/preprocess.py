@@ -89,41 +89,48 @@ def impute_missing_mandant_values(df: pd.DataFrame) -> pd.DataFrame:
         df["mandant"].apply(lambda x: x[:-3]),
         df["mandant"],
     )
-    # This block is necessary because of a wrong input "SimplyCC"
     df["mandant"] = np.where(
-        df["mandant"].str.endswith(" CH"),
-        df["mandant"].apply(lambda x: x[:-3]),
+        df["mandant"].str.endswith(" CCL"),
+        df["mandant"].apply(lambda x: x[:-4]),
         df["mandant"],
     )
+
+    # Just to make sure that no right spaces pollutes my strings ;-)
+    df["mandant"] = df["mandant"].apply(lambda x: x.rstrip())
     return df
 
 
-def impute_missing_cardprofile_values(df: pd.DataFrame) -> pd.DataFrame:
+def impute_missing_cardprofile_values_1(df: pd.DataFrame) -> pd.DataFrame:
     """Impute the expected missing values for cardprofile.
 
-    On the higher agg_levels 2, 3, 4 the value for `mandant` is
+    On the higher agg_levels 2, 3, 4 the value for `cardprofile` is
     not provided, so we have to impute the (cleaned) string form
     "agg_level_value".
     """
-    df["cardprofile"] = np.where(
-        (df["agg_level_id"].isin([2, 3, 4]))
-        & (df["agg_level_value"].str.endswith("CC")),
-        "CC",
-        df["cardprofile"],
-    )
-    df["cardprofile"] = np.where(
-        (df["agg_level_id"].isin([2, 3, 4]))
-        & (df["agg_level_value"].str.endswith("PP")),
-        "PP",
-        df["cardprofile"],
-    )
-    df["cardprofile"] = np.where(
-        (df["agg_level_id"].isin([2, 3, 4]))
-        & (df["agg_level_value"].str.endswith("CH")),
-        "CH",
-        df["cardprofile"],
-    )
+    for profile_str in ["CC", "PP", "CCL"]:
+        df["cardprofile"] = np.where(
+            (df["agg_level_id"].isin([2, 3, 4]))
+            & (df["agg_level_value"].str.endswith(profile_str)),
+            profile_str,
+            df["cardprofile"],
+        )
     return df
+
+
+# def impute_missing_cardprofile_values_2(df: pd.DataFrame) -> pd.DataFrame:
+#     """For the NCA kpi family we can impute the `cardprofile`
+#     values from the `kpi_name`. - But not sure if this makes sense ...
+#     """
+#     # TODO replace "CH" with "CCL" as soon as kpi_names in DB are updated
+#     for profile_str in ["CC", "PP", "CH"]:
+#         df["cardprofile"] = np.where(
+#             (df["agg_level_id"].isin([1, 4]))
+#             & (df["cardprofile"].isnull())
+#             & (df["kpi_name"].str.endswith(profile_str)),
+#             profile_str,
+#             df["cardprofile"],
+#         )
+#     return df
 
 
 def create_max_date_dict(df: pd.DataFrame) -> Dict[str, pd.Timestamp]:
@@ -231,7 +238,8 @@ def main():
     df = trim_strings(df)
     df = prettify_kpi_names(df)
     df = impute_missing_mandant_values(df)
-    df = impute_missing_cardprofile_values(df)
+    df = impute_missing_cardprofile_values_1(df)
+    # df = impute_missing_cardprofile_values_2(df)  # TODO remove if not used
     dict_max_date_per_entity = create_max_date_dict(df)
     df = expand_dataframe_fully(df)
     df = reduce_dataframe_to_max_date_per_entity(df, dict_max_date_per_entity)
