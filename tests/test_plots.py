@@ -7,8 +7,8 @@ def test_get_dimensions_for_plot():
     df = pd.DataFrame(
         {
             "kpi_name": ["Umsatz Total", "Umsatz Total", "Umsatz Inland"],
-            "agg_level_value": ["e_1", "e_2", "e_1"],
-            "agg_level_id": [1, 2, 2],
+            "product_name": ["e_1", "e_2", "e_1"],
+            "level": [1, 2, 2],
         }
     )
     (

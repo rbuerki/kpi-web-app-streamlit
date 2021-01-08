@@ -13,31 +13,31 @@ import streamlit as st
 import data_dicts
 
 
-LOGGING_CONFIG = (Path(__file__).parent.parent / "logging.conf").absolute()
-logging.config.fileConfig(fname=LOGGING_CONFIG, disable_existing_loggers=False)
-logger = logging.getLogger("appLogger")
+# LOGGING_CONFIG = (Path(__file__).parent.parent / "logging.conf").absolute()
+# logging.config.fileConfig(fname=LOGGING_CONFIG, disable_existing_loggers=False)
+# logger = logging.getLogger("appLogger")
 
 
-def logging_runtime(func):
-    """Create a decorator that logs time for a function call.
-    Will be applied to the fucntions below for performance testing.
-    """
-    @functools.wraps(func)
-    def logger_wrapper(*args, **kwargs):
-        """Function that logs time."""
-        start = time.time()
-        result = func(*args, **kwargs)
-        end = time.time()
-        logger.info(
-            f"Calling {func.__name__} - Elapsed time (s): {(end - start):.2f}"
-        )
-        return result
+# def logging_runtime(func):
+#     """Create a decorator that logs time for a function call.
+#     Will be applied to the fucntions below for performance testing.
+#     """
+#     # @functools.wraps(func)
+#     def logger_wrapper(*args, **kwargs):
+#         """Function that logs time."""
+#         start = time.time()
+#         result = func(*args, **kwargs)
+#         end = time.time()
+#         logger.info(
+#             f"Calling {func.__name__} - Elapsed time (s): {(end - start):.2f}"
+#         )
+#         return result
 
-    return logger_wrapper
+#     return logger_wrapper
 
 
-@logging_runtime
-@st.cache()  # TODO reactivate if not active
+# @logging_runtime
+# @st.cache()  # TODO reactivate if not active
 def load_preprocessed_data(path: str) -> pd.DataFrame:
     """Load data and return a dataframe."""
     try:
@@ -62,8 +62,8 @@ def load_preprocessed_data(path: str) -> pd.DataFrame:
 # FILTER DISPLAY DATA
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def _return_full_date_list(df: pd.DataFrame) -> List[str]:
     """Return a list of all unique dates in the dataframe, as strings
     in descending order. (This function is called within
@@ -74,8 +74,8 @@ def _return_full_date_list(df: pd.DataFrame) -> List[str]:
     return date_list
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def get_filter_options_for_due_date(
     df: pd.DataFrame, n_months_min: int = 12
 ) -> List[str]:
@@ -95,16 +95,16 @@ def get_filter_options_for_due_date(
         return date_list
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def return_max_date_string(df: pd.DataFrame) -> str:
     """Return the most recent date available from the loaded data."""
     max_date = df["calculation_date"].max()
     return max_date.strftime(format="%Y-%m-%d")
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def return_actual_date_string(filter_now_date: str, max_date: str) -> str:
     """Return the date that will effectively be the "due date" for the
     reporting. Defaults to `max_date`, but the user can choose an earlier
@@ -116,8 +116,8 @@ def return_actual_date_string(filter_now_date: str, max_date: str) -> str:
         return max_date
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def truncate_data_to_actual_date(df: pd.DataFrame, actual_date: str) -> pd.DataFrame:
     """Remove all periods "younger" than the selected actual date and
     return the truncated data. (Note: From here on the `calcuation_date`
@@ -129,8 +129,8 @@ def truncate_data_to_actual_date(df: pd.DataFrame, actual_date: str) -> pd.DataF
     return df
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def calculate_max_n_years_available(df: pd.DataFrame) -> int:
     """Check if the truncated data still has n * 12 + 1 months or more
     in the `calculation_date` column. If yes, return n (years) as input
@@ -148,8 +148,8 @@ def calculate_max_n_years_available(df: pd.DataFrame) -> int:
         raise ValueError("Something went wrong. Not enough data periods loaded.")
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def truncate_data_n_years_back(
     df: pd.DataFrame, actual_date: str, n_years: int
 ) -> pd.DataFrame:
@@ -170,8 +170,8 @@ def truncate_data_n_years_back(
     return df
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def get_filter_options_for_result_dim(n_years: int) -> List[str]:
     """Depending on `n_years`, return a list of options for the
     "result dimension" filter (period aggregation). If `n_years`
@@ -187,8 +187,8 @@ def get_filter_options_for_result_dim(n_years: int) -> List[str]:
         return options
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def prepare_values_according_to_result_dim(
     df: pd.DataFrame, result_dim: str, actual_date: str,
 ) -> pd.DataFrame:
@@ -214,18 +214,8 @@ def prepare_values_according_to_result_dim(
     return df
 
 
-@logging_runtime
-# @st.cache()
-def replace_monthly_values_with_avg(df: pd.DataFrame, result_dim: str, avg_bool: bool):
-    if avg_bool:
-        assert result_dim == "Monat", "Uups, wrong result dim for averages."
-        df["value"] = df["value_avg"]
-    df.drop("value_avg", axis=1, inplace=True)
-    return df
-
-
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def calculate_diff_column(df: pd.DataFrame, n_months_diff: int = 12) -> pd.DataFrame:
     """Calculate the %-difference for the KPI values between two
     periods and write it into a new colum. Return a new dataframe.
@@ -243,16 +233,16 @@ def calculate_diff_column(df: pd.DataFrame, n_months_diff: int = 12) -> pd.DataF
 
     df_diff.reset_index(drop=True, inplace=True)
 
-    # Capp unreasonalbe diff values (e.g. for new products)
+    # Capp unreasonalbe diff values (new products)
     df_diff["diff_value"] = df_diff["diff_value"].apply(
-        lambda x: np.nan if not abs(x) < 100 else x
+        lambda x: np.nan if not abs(x) < 10000000 else x
     )
 
     return df_diff
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def create_df_with_actual_period_only(
     df: pd.DataFrame, actual_date: str
 ) -> pd.DataFrame:
@@ -266,8 +256,8 @@ def create_df_with_actual_period_only(
 # FILTERING FOR MANDANT AND KPI GROUPS (HIGH LEVEL, SIDEBAR)
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def get_filter_options_for_mandant_groups(df: pd.DataFrame) -> List:
     """Return a list of the unique `mandant` values. Insert the options
      "[alle]", "BCAG" at the beginning of the list.
@@ -282,8 +272,8 @@ def get_filter_options_for_mandant_groups(df: pd.DataFrame) -> List:
     return mandant_groups
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def get_filter_options_for_kpi_groups() -> List:
     """Return the `KPI_GROUPS` as defined in the `data_dicts`
     module.
@@ -294,11 +284,11 @@ def get_filter_options_for_kpi_groups() -> List:
 # FILTERING FOR PRODUCT DIMENSION AND DISPLAY VIEW (SIDE BAR)
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def filter_for_sidebar_selections_mandant(
     df: pd.DataFrame,
-    filter_mandant_groups: str,
+    filter_mandant: str,
 ) -> pd.DataFrame:
     """Return the dataframe filtered for the necessary `level`
     depending on selected product dim, mandant group and display view.
@@ -306,21 +296,21 @@ def filter_for_sidebar_selections_mandant(
     mandant = None
     # if filter_product_dim == "Produkt":
     # if filter_display_mode.endswith("KPI"):
-    if filter_mandant_groups == "[alle]":
+    if filter_mandant == "[alle]":
         agg_level = [0, 1, 2, 3]
         sector = ["BCAG", "B2C", "B2B2C"]
-    elif filter_mandant_groups == "BCAG":
+    elif filter_mandant == "BCAG":
         agg_level = [0, 1]
         sector = ["BCAG", "B2C", "B2B2C"]
-    elif filter_mandant_groups == "B2B2C":
+    elif filter_mandant == "B2B2C":
         agg_level = [1, 2, 3]
         sector = ["B2B2C"]
-    elif filter_mandant_groups == "B2C":
+    elif filter_mandant == "B2C":
         agg_level = [1, 2, 3]
         sector = ["B2C"]
     else:
         agg_level = [2, 3]
-        mandant = filter_mandant_groups
+        mandant = filter_mandant
 
     if mandant:
         return df.loc[
@@ -334,8 +324,8 @@ def filter_for_sidebar_selections_mandant(
         ]
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def filter_for_sidebar_selections_kpi(
     df: pd.DataFrame, filter_kpi_groups: str
 ) -> pd.DataFrame:
@@ -360,8 +350,8 @@ def filter_for_sidebar_selections_kpi(
     return df.loc[df["kpi_name"].isin(kpi_options)]
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def get_filter_options_for_entities(df: pd.DataFrame) -> List:
     """Return a list with the available entities depending on selected
     values for mandant group and product dimension in the side panel.
@@ -372,8 +362,8 @@ def get_filter_options_for_entities(df: pd.DataFrame) -> List:
     return entity_options
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def get_filter_options_for_kpi(df: pd.DataFrame) -> List:
     """Return a list with the available kpi depending on selected
     values for kpi group. Add an `[alle]` option at index 0 as default.
@@ -383,12 +373,12 @@ def get_filter_options_for_kpi(df: pd.DataFrame) -> List:
     return kpi_options
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def filter_for_entity_and_kpi(
     df: pd.DataFrame,
     filter_entity: List[str],
-    filter_kpi: List[str]
+    filter_kpi: List[str],
 ) -> pd.DataFrame:
     """Filter df according to the user choices for entity and kpi.
     Only if "[alle]" is the only value in the multi-select it actually
@@ -402,8 +392,8 @@ def filter_for_entity_and_kpi(
     return df
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def create_dict_of_df_for_each_kpi(
     df: pd.DataFrame
 ) -> Dict[str, pd.DataFrame]:
@@ -416,8 +406,8 @@ def create_dict_of_df_for_each_kpi(
     return display_dict
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def create_dict_of_df_for_each_entity(
     df: pd.DataFrame
 ) -> Dict[str, pd.DataFrame]:
@@ -430,8 +420,8 @@ def create_dict_of_df_for_each_entity(
     return display_dict
 
 
-@logging_runtime
-# @st.cache()
+# @logging_runtime
+# # @st.cache()
 def prepare_for_display(df: pd.DataFrame, filter_display_mode: str) -> pd.DataFrame:
     """Return a `display_df` with rearanged, renamed and selected
     columns for display depending on the selected display filter mode.
@@ -450,55 +440,8 @@ def prepare_for_display(df: pd.DataFrame, filter_display_mode: str) -> pd.DataFr
     return display_df
 
 
-@logging_runtime
-# @st.cache()
-def display_dataframes(
-    df: pd.DataFrame,
-    filter_display_mode: str,
-    filter_product_dim: str,
-    filter_mandant: str,
-    filter_entity: List[str],
-    avg_bool: bool
-):
-    """Display dataframes in grouped chunks (with a small title
-    each) and style the first row bold or not depending on filter
-    selections.
-    """
-    if avg_bool:
-        value_fmt = "{:,.2f}"
-    else:
-        value_fmt = "{:,.0f}"
-
-    for k, v in df.groupby(df.index, sort=False):
-        st.write(f"**{k}**")
-        # TODO the comment in the next line is a hack to get rid of the index
-        v = v.reset_index(drop=True)  # v.set_index("KPI", inplace=True)
-
-        # Stile the first row bold or not - damned verbose ...
-        if (
-            filter_display_mode.endswith("KPI")
-            & (filter_mandant != "[alle]")
-            & (len(filter_entity) == 1)
-        ):
-            st.table(
-                v.style.format(
-                    {"Wert": value_fmt, "Abw VJ": "{:,.1%}"}, na_rep="-"
-                ).applymap(
-                    _set_bold_font,
-                    subset=pd.IndexSlice[v.index[v.index == 0], :],
-                )
-            )
-        else:
-            st.table(
-                v.style.format(
-                    {"Wert": value_fmt, "Abw VJ": "{:,.1%}"}, na_rep="-"
-                )
-            )
-
-
-def _set_bold_font(val: Any) -> str:
+def set_bold_font(val: Any) -> str:
     """Take a scalar and return a string with css property
-    `"font-weight: bold"`. (This function is called in
-    `display_dataframes`)
+    `"font-weight: bold"`.
     """
     return "font-weight: bold"

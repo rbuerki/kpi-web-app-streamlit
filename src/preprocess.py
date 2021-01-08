@@ -1,15 +1,24 @@
 import datetime as dt
+import logging
+import logging.config
+from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 
-server = "JES2010HA01\\HA01,57226"
-db_name = "KF_CORE"
+import data_dicts
+
+LOGGING_CONFIG = (Path(__file__).parent.parent / "logging.conf").absolute()
+logging.config.fileConfig(fname=LOGGING_CONFIG, disable_existing_loggers=False)
+logger = logging.getLogger("preprocessLogger")
+
+SERVER = "JES2010HA01\\HA01,57226"
+DB_NAME = "KF_CORE"
 
 
-def connect_to_engine(sever: str, db_name: str) -> Any:
+def connect_to_engine(server: str, db_name: str) -> Any:
     """Assemble a connection string, connect to the db engine and
     return a connection object.
     """
@@ -31,9 +40,12 @@ def read_query(file_path: str, n_years_back: int = 3) -> str:
 
 
 def create_df(query, connection):
-    """Read the data from the db and return a dataframe."""
+    """Read the data from the db and return a dataframe with
+    correct datatpyes (is `decimal` for value column).
+    """
     result = connection.execute(query).fetchall()
     df = pd.DataFrame(result, columns=result[0].keys())
+    # df["value"] = pd.to_numeric(df["value"], errors="raise", downcast="float")
     return df
 
 
@@ -61,8 +73,18 @@ def trim_strings(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def prettify_kpi_names(df):
-    """Replacing parantheses is a pain ..."""
+def get_rid_of_invalid_entries(df: pd.DataFrame) -> pd.DataFrame:
+    """Some entries are created by IT and do not show actual values or have
+    to be (temporarily) removed for other reasons.
+    """
+    df = df[~df["product_name"].str.startswith("Reserviert IT")]
+    # TODO: Temporarily exlcude this KPI, wrong Mandant names, no valid entity level
+    df = df[df["kpi_name"] != "NCAs: Anzahl Antraege Completed Total"]
+    return df
+
+
+def prettify_kpi_names(df: pd.DataFrame) -> pd.DataFrame:
+    """Cosmetics. Note: Replacing parantheses is a pain ..."""
     df["kpi_name"] = df["kpi_name"].str.replace("gueltig", "gültig")
     df["kpi_name"] = (
         df["kpi_name"]
@@ -73,74 +95,39 @@ def prettify_kpi_names(df):
     return df
 
 
-def impute_missing_mandant_values(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute the expected missing values for mandant."""
-    df["mandant"] = np.where(df["agg_level_id"].isin([1, 2]), "Overall", df["mandant"])
-    df["mandant"] = np.where(
-        (df["agg_level_id"].isin([3, 4])), df["agg_level_value"], df["mandant"]
-    )
-    df["mandant"] = np.where(
-        df["mandant"].str.endswith(" PP"),
-        df["mandant"].apply(lambda x: x[:-3]),
-        df["mandant"],
-    )
-    df["mandant"] = np.where(
-        df["mandant"].str.endswith(" CC"),
-        df["mandant"].apply(lambda x: x[:-3]),
-        df["mandant"],
-    )
-    df["mandant"] = np.where(
-        df["mandant"].str.endswith(" CCL"),
-        df["mandant"].apply(lambda x: x[:-4]),
-        df["mandant"],
-    )
-
-    # Just to make sure that no right spaces pollutes my strings ;-)
-    df["mandant"] = df["mandant"].apply(lambda x: x.rstrip())
-    return df
-
-
-def impute_missing_cardprofile_values_1(df: pd.DataFrame) -> pd.DataFrame:
-    """Impute the expected missing values for cardprofile.
-
-    On the higher agg_levels 2, 3, 4 the value for `cardprofile` is
-    not provided, so we have to impute the (cleaned) string form
-    "agg_level_value".
+def add_mandant_sector_level_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Look-up `mandant` and `sector` values from the PRODUCT_LOOK_UP
+    dict (in the `data_dicts` module.) and crate new columns. Raise
+    when there is a KeyError. Also create a `level` column with all
+    values set to '3' (-> 'prodcut level'). Return transformed df.
     """
-    for profile_str in ["CC", "PP", "CCL"]:
-        df["cardprofile"] = np.where(
-            (df["agg_level_id"].isin([2, 3, 4]))
-            & (df["agg_level_value"].str.endswith(profile_str)),
-            profile_str,
-            df["cardprofile"],
+    try:
+        df["mandant"] = df["product_name"].apply(
+            lambda x: data_dicts.PRODUCT_LOOK_UP[x]["mandant"]
+        )
+        df["sector"] = df["product_name"].apply(
+            lambda x: data_dicts.PRODUCT_LOOK_UP[x]["sector"]
+        )
+    except KeyError as e:
+        print(f"Loaded product not in PRODUCT_LOOK_UP. LOOK_UP has to be updated!: {e}")
+    df["level"] = 3
+
+    # Sanity check
+    if df.isna().sum().sum() != 0:
+        raise AssertionError(
+            "Ups, something went wrong: NaN values in df, please check!"
         )
     return df
 
 
-# def impute_missing_cardprofile_values_2(df: pd.DataFrame) -> pd.DataFrame:
-#     """For the NCA kpi family we can impute the `cardprofile`
-#     values from the `kpi_name`. - But not sure if this makes sense ...
-#     """
-#     # TODO replace "CH" with "CCL" as soon as kpi_names in DB are updated
-#     for profile_str in ["CC", "PP", "CH"]:
-#         df["cardprofile"] = np.where(
-#             (df["agg_level_id"].isin([1, 4]))
-#             & (df["cardprofile"].isnull())
-#             & (df["kpi_name"].str.endswith(profile_str)),
-#             profile_str,
-#             df["cardprofile"],
-#         )
-#     return df
-
-
 def create_max_date_dict(df: pd.DataFrame) -> Dict[str, pd.Timestamp]:
-    """Return a dict with each unique `agg_level_value` as key and
+    """Return a dict with each unique `product_name` as key and
     the last month it appeared in as value. (This is necessary for
     correcting the full expansion of the dataframe in a later step.)
     """
-    df_max_date = df[["agg_level_value", "calculation_date"]].copy()
-    df_max_date.sort_values(["agg_level_value", "calculation_date"], inplace=True)
-    df_max_date.drop_duplicates(subset="agg_level_value", keep="last", inplace=True)
+    df_max_date = df[["product_name", "calculation_date"]].copy()
+    df_max_date.sort_values(["product_name", "calculation_date"], inplace=True)
+    df_max_date.drop_duplicates(subset="product_name", keep="last", inplace=True)
 
     dict_max_date_per_entity = {e: d for e, d in df_max_date.itertuples(index=False)}
     return dict_max_date_per_entity
@@ -149,27 +136,18 @@ def create_max_date_dict(df: pd.DataFrame) -> Dict[str, pd.Timestamp]:
 def expand_dataframe_fully(df: pd.DataFrame) -> pd.DataFrame:
     """Expand the dataframe to have a complete time series of
     `calculation_date` for each possible kpi, agg_level, profile combi.
-    Non-existent `value` values get a NaN entry. (This step is necessary
+    Non-existent `value` entries get a NaN entry. (This step is necessary
     to ensure correct difference calculation for the values in later
     stages - because in rare cases it is possible that some entities
-    get no value for certain months. See dev notebook's appendix for
+    get no value for certain months. See old dev notebook's appendix for
     details on this issue.)
     """
     months = pd.DataFrame(
         {"calculation_date": sorted(df["calculation_date"].unique()), "merge_col": 0}
     )
 
-    rest = df[
-        [
-            "kpi_id",
-            "kpi_name",
-            "period_id",
-            "agg_level_id",
-            "agg_level_value",
-            "mandant",
-            "cardprofile",
-        ]
-    ].drop_duplicates()
+    # All but `calculation_date` and `value`
+    rest = df.drop(["calculation_date", "value"], axis=1).drop_duplicates()
     rest["merge_col"] = 0
 
     temp_tbl = months.merge(rest, how="outer", on="merge_col")
@@ -184,12 +162,19 @@ def expand_dataframe_fully(df: pd.DataFrame) -> pd.DataFrame:
             "kpi_id",
             "kpi_name",
             "period_id",
-            "agg_level_id",
-            "agg_level_value",
-            "mandant",
+            "product_name",
             "cardprofile",
+            "mandant",
+            "sector",
+            "level",
         ],
     ).reset_index(drop=True)
+
+    # Sanity check
+    if df.shape[0] / len(df.groupby(["product_name", "kpi_name"]).groups.keys()) != 37:
+        raise AssertionError(
+            "In case you did not load 3 years, something went wrong, please check!"
+        )
     return df
 
 
@@ -203,11 +188,111 @@ def reduce_dataframe_to_max_date_per_entity(
     for entity, date_ in dict_max_date_per_entity.items():
         df.drop(
             df.loc[
-                (df["agg_level_value"] == entity) & (df["calculation_date"] > date_)
+                (df["product_name"] == entity) & (df["calculation_date"] > date_)
             ].index,
             inplace=True,
         )
     return df
+
+
+def create_new_mandant_level_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Retrun a dataframe with the aggregated values on MANDANT level.
+    Add and fill the necessary columns so that it can be merged with the
+    product level values (the original input df) later on.
+    """
+    df_g = df.groupby(
+        ["calculation_date", "kpi_id", "kpi_name", "period_id", "mandant", "sector"]
+    )["value"].sum().reset_index()
+    df_g["product_name"] = df_g["mandant"] + " - Total"
+    df_g["cardprofile"] = "all"
+    df_g["level"] = 2
+    df_g = df_g.reindex(df.columns, axis=1)
+
+    # Sanity Check
+    if df_g["value"].sum() != df["value"].sum():
+        raise AssertionError("Ups, something went wrong, please check.")
+    return df_g
+
+
+def create_new_sector_level_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Retrun a dataframe with the aggregated values on SECTOR level.
+    Add and fill the necessary columns so that it can be merged with the
+    product level values (the original input df) later on.
+    """
+    df_g = df.groupby(
+        ["calculation_date", "kpi_id", "kpi_name", "period_id", "sector"]
+    )["value"].sum().reset_index()
+    df_g["mandant"] = df_g["sector"]
+    df_g["product_name"] = df_g["sector"] + " - Total"
+    df_g["cardprofile"] = "all"
+    df_g["level"] = 1
+    df_g = df_g.reindex(df.columns, axis=1)
+
+    # Sanity Check
+    if df_g["value"].sum() != df["value"].sum():
+        raise AssertionError("Ups, something went wrong, please check.")
+    return df_g
+
+
+def create_new_overall_level_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Retrun a dataframe with the aggregated values on OVERALL level.
+    Add and fill the necessary columns so that it can be merged with the
+    product level values (the original input df) later on.
+    """
+    df_g = df.groupby(
+        ["calculation_date", "kpi_id", "kpi_name", "period_id"]
+    )["value"].sum().reset_index()
+    df_g["mandant"] = "BCAG"
+    df_g["sector"] = "BCAG"
+    df_g["product_name"] = df_g["sector"] + " - Total"
+    df_g["cardprofile"] = "all"
+    df_g["level"] = 0
+    df_g = df_g.reindex(df.columns, axis=1)
+
+    # Sanity Check
+    if df_g["value"].sum() != df["value"].sum():
+        raise AssertionError("Ups, something went wrong, please check.")
+    return df_g
+
+
+def concatenate_all_levels(
+    df: pd.DataFrame,
+    df_mandant: pd.DataFrame,
+    df_sector: pd.DataFrame,
+    df_overall: pd.DataFrame,
+) -> pd.DataFrame:
+    """Return a concactenated dataframe with all levels. """
+    return pd.concat([df, df_mandant, df_sector, df_overall], ignore_index=True)
+
+
+def add_avg_value_column(df):
+    """Add an 'value_avg' column where the total value is divided
+    by the 'Aktive Konten' of the respective product-date combination.
+    If 'Aktive Konten' is missing, fill with np.nan.
+    """
+    df_grouped = df.groupby(["calculation_date", "product_name"], sort=False)
+    df_w_avg = df_grouped.apply(_calc_avg_value)
+    # Sanity Check
+    assert df_w_avg.iloc[:, :-1].equals(df), "Uups, something went wrong."
+    return df_w_avg
+
+
+def _calc_avg_value(df_chunk):
+    """Return the respective groupby chunk with a new avg column.
+    (This is called within `add_avg_value_column`.)
+    """
+    try:
+        n_active = float(
+            df_chunk[df_chunk["kpi_name"] == "Anzahl aktive Konten Total"]
+            ["value"].values[0]
+        )
+        df_chunk["value_avg"] = (
+            (pd.to_numeric(df_chunk["value"], errors="raise", downcast="float") + 0.001)
+            / n_active
+        )
+    except IndexError:
+        df_chunk["value_avg"] = np.nan
+    return df_chunk
 
 
 def sort_and_drop_kpi_id(df: pd.DataFrame) -> pd.DataFrame:
@@ -218,10 +303,9 @@ def sort_and_drop_kpi_id(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(
         [
             "kpi_id",
-            "period_id",
-            "agg_level_id",
-            "agg_level_value",
+            "level",
             "mandant",
+            "product_name",
             "cardprofile",
             "calculation_date",
         ]
@@ -230,22 +314,116 @@ def sort_and_drop_kpi_id(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def main():
+def save_to_csv(df: pd.DataFrame):
+    """Save two copies of the dataframe: The 'working' file that is
+    overwriting the old data and will be overwritten next month. And
+    a copy that will be permanently stored in the "history" folder.
+    """
+    df.to_csv("./data/preprocessed_results.csv", index=False)
+    # History copy with yearmon_str in name
+    end_date = df["calculation_date"].max()
+    yearmon_str = str(end_date.date().strftime('%Y-%m'))
+    df.to_csv(f"./data/history/{yearmon_str}_preprocessed_results.csv", index=False)
+
+
+def validate_and_log_results(df: pd.DataFrame):
+    """Get some dataframe stats and compare some of them to expected
+    values in the PREPROCESS_VALIDATION dict. If unexpected values
+    are found, log warnings. (It might well be that the expected values
+    in the dict have to be updated if the changes are desired.) Logging
+    happens to console and the file `preprocessing.log`.
+    """
+    nunique_list = [f"- {col}: {df[col].nunique()}" for col in list(df.columns)[:-1]]
+    nunique_str = "\n".join(nunique_list)
+    nan_list = [f"- {col}: {df[col].isnull().sum()}" for col in list(df.columns)]
+    nan_str = "\n".join(nan_list)
+    cols_exp = data_dicts.PREPROCESS_VALIDATION["cols"]
+    cols_act = list(df.columns)
+    mandant_exp = sorted(data_dicts.PREPROCESS_VALIDATION["mandant"])
+    mandant_act = sorted([val for val in df["mandant"].unique()])
+    profile_exp = sorted(data_dicts.PREPROCESS_VALIDATION["cardprofile"])
+    profile_act = sorted(
+        [val for val in df["cardprofile"].unique() if isinstance(val, str)]
+    )
+    agg_level_id_exp = sorted(data_dicts.PREPROCESS_VALIDATION["level"])
+    agg_level_id_act = sorted([val for val in df["level"].unique()])
+    period_id_exp = sorted(data_dicts.PREPROCESS_VALIDATION["period_id"])
+    period_id_act = sorted([val for val in df["period_id"].unique()])
+    n_period_exp = data_dicts.PREPROCESS_VALIDATION["n_period"]
+    n_period_act = df["calculation_date"].nunique()
+
+    # Log infos
+    logger.info(f"LOG FOR PERIOD: {df['calculation_date'].max()}")
+
+    logger.info(
+        "# of unique values per (relevant) column in processed df:\n"
+        f"{nunique_str}"
+    )
+    logger.info("# of NaN values per column in processed df:\n" f"{nan_str}")
+    logger.info(f"Total rows in dataset: {len(df):,.0f}")
+
+    # Log warnings
+    if not cols_exp == cols_act:
+        logger.warning(
+            f"\nData cols not as expected!\n"
+            f" Expected columns are:\n {cols_exp}\n"
+            f" Actual columns are:\n {cols_act}\n"
+        )
+    if not n_period_exp == n_period_act:
+        logger.warning(
+            f"\n# of unique periods not as expected!\n"
+            f" Expected: {n_period_exp}, Actual: {n_period_act}\n\n"
+        )
+    if not mandant_exp == mandant_act:
+        logger.warning(
+            f"\nMandant values not as expected!\n"
+            f" Expected mandants are:\n {mandant_exp}\n"
+            f" Actual mandants are:\n {mandant_act}\n"
+        )
+    if not profile_exp == profile_act:
+        logger.warning(
+            f"Card profile values not as expected!\n"
+            f" Expected profiles are:\n {profile_exp}\n"
+            f" Actual profiles are:\n {profile_act}\n"
+        )
+    if not agg_level_id_exp == agg_level_id_act:
+        logger.warning(
+            f"Agg_level_id values not as expected!\n"
+            f" Expected agg_level_ids are:\n {agg_level_id_exp}\n"
+            f" Actual agg_level_ids are:\n {agg_level_id_act}\n"
+        )
+    if not period_id_exp == period_id_act:
+        logger.warning(
+            f"Period_id values not as expected!\n"
+            f" Expected period_ids are:\n {period_id_exp}\n"
+            f" Actual period_ids are:\n {period_id_act}\n"
+        )
+
+
+def main(server, db_name):
+    logger.info("Start preprocessing ...")
     connection = connect_to_engine(server, db_name)
     query = read_query("sql_statements/get_results_for_kpi_sheet.sql", n_years_back=3)
     df = create_df(query, connection)
     df = create_calculation_date_column(df)
     df = trim_strings(df)
+    df = get_rid_of_invalid_entries(df)
     df = prettify_kpi_names(df)
-    df = impute_missing_mandant_values(df)
-    df = impute_missing_cardprofile_values_1(df)
-    # df = impute_missing_cardprofile_values_2(df)  # TODO remove if not used
+    df = add_mandant_sector_level_columns(df)
     dict_max_date_per_entity = create_max_date_dict(df)
     df = expand_dataframe_fully(df)
     df = reduce_dataframe_to_max_date_per_entity(df, dict_max_date_per_entity)
+    df_mandant = create_new_mandant_level_rows(df)
+    df_sector = create_new_sector_level_rows(df)
+    df_overall = create_new_overall_level_rows(df)
+    df = concatenate_all_levels(df, df_mandant, df_sector, df_overall)
+    df = add_avg_value_column(df)
     df = sort_and_drop_kpi_id(df)
-    df.to_csv("./data/preprocessed_results.csv", index=False)
+    save_to_csv(df)
+
+    validate_and_log_results(df)
+    logger.info("Preprocessing complete!\n\n")
 
 
 if __name__ == "__main__":
-    main()
+    main(SERVER, DB_NAME)

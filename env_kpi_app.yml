@@ -1,4 +1,4 @@
-name: kpi_app
+name: py3
 channels:
   - anaconda
   - plotly
@@ -6,32 +6,51 @@ channels:
   - defaults
 dependencies:
   - python
-  # Code formatters & linters
+  # CODE FORMATTERS & lINTERS
   - black
   - autopep8
   - flake8
   - flake8-bugbear
   - mypy
-  # Jupyter
+  # JUPYTER STUFF
   - jupyter
   - jupyter_contrib_nbextensions
   - ipywidgets
-  # SQL packages
+  # SQL & CLOUD
   - sqlalchemy
   - pyodbc
   - ipython-sql
-  # Data related stuff
-  - bulwark
+  # - psycopg2
+  # - boto3
+  # DATA RELATED
   - numpy
   - pandas
+  - pandas-profiling
+  - scipy
+  - scikit-learn
   - pyarrow
   - openpyxl
-  # Plotting
+  - tqdm
+  # - networkx
+# MACHINE LEARNING
+  # - eli5
+  # - imbalanced-learn
+  # - mlxtend
+  # - py-xgboost
+# PYTORCH 
+  # - pytorch
+  # - torchvision
+  # - cudatoolkit=10.2
+  # PLOTTING
   - matplotlib
   - seaborn
   - plotly
   - python-cufflinks
-  # Testing and development
+  # - squarify 
+# WEB
+  # - flask
+  # - flask-restful
+ # TESTING & DEVELOPMENT
   - pytest
   - pytest-cov
   - pytest-xdist
@@ -43,4 +62,6 @@ dependencies:
     - streamlit
     - data-science-types
     - xlsxwriter
+    - pyinstaller
+    # - opencv-python  # image manipulation
     # - "O:\\DMIS Jemas\\20 Sourcecode\\90_Python\\bcag\\bcag_0.12\\dist\\bcag-0.12-py3-none-any.whl"

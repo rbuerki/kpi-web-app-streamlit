@@ -1,0 +1,198 @@
+'2020-12-09 11:47:59' preprocessLogger INFO Start preprocessing ...
+'2020-12-09 11:51:05' preprocessLogger INFO Start preprocessing ...
+'2020-12-09 11:52:26' preprocessLogger INFO Start preprocessing ...
+'2020-12-09 11:52:32' preprocessLogger INFO LOG FOR PERIOD: 2020-11-30 00:00:00
+'2020-12-09 11:52:32' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+'2020-12-09 11:52:32' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 15122
+'2020-12-09 11:52:32' preprocessLogger INFO Total rows in dataset: 63,729
+'2020-12-09 11:52:32' preprocessLogger INFO Preprocessing complete!
+
+
+'2020-12-17 13:43:32' preprocessLogger INFO Start preprocessing ...
+'2020-12-17 13:43:41' preprocessLogger INFO LOG FOR PERIOD: 2020-11-30 00:00:00
+'2020-12-17 13:43:41' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+- value: 20205
+'2020-12-17 13:43:41' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 15122
+- value_avg: 15289
+'2020-12-17 13:43:41' preprocessLogger INFO Total rows in dataset: 63,729
+'2020-12-17 13:43:41' preprocessLogger WARNING 
+Data cols not as expected!
+ Expected columns are:
+ ['calculation_date', 'kpi_name', 'period_id', 'product_name', 'cardprofile', 'mandant', 'sector', 'level', 'value']
+ Actual columns are:
+ ['calculation_date', 'kpi_name', 'period_id', 'product_name', 'cardprofile', 'mandant', 'sector', 'level', 'value', 'value_avg']
+
+'2020-12-17 13:43:41' preprocessLogger INFO Preprocessing complete!
+
+
+'2020-12-17 13:58:43' preprocessLogger INFO Start preprocessing ...
+'2020-12-17 13:59:38' preprocessLogger INFO Start preprocessing ...
+'2020-12-17 14:00:21' preprocessLogger INFO Start preprocessing ...
+'2020-12-17 14:00:33' preprocessLogger INFO LOG FOR PERIOD: 2020-11-30 00:00:00
+'2020-12-17 14:00:33' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+- value: 20196
+'2020-12-17 14:00:33' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 15122
+- value_avg: 15289
+'2020-12-17 14:00:33' preprocessLogger INFO Total rows in dataset: 63,729
+'2020-12-17 14:00:33' preprocessLogger INFO Preprocessing complete!
+
+
+'2021-01-04 16:22:43' preprocessLogger INFO Start preprocessing ...
+'2021-01-04 16:22:54' preprocessLogger INFO LOG FOR PERIOD: 2020-12-31 00:00:00
+'2021-01-04 16:22:54' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+- value: 20210
+'2021-01-04 16:22:54' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 14895
+- value_avg: 15056
+'2021-01-04 16:22:54' preprocessLogger INFO Total rows in dataset: 63,523
+'2021-01-04 16:22:54' preprocessLogger INFO Preprocessing complete!
+
+
+'2021-01-04 16:27:23' preprocessLogger INFO Start preprocessing ...
+'2021-01-04 16:27:33' preprocessLogger INFO LOG FOR PERIOD: 2020-12-31 00:00:00
+'2021-01-04 16:27:33' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+- value: 20210
+'2021-01-04 16:27:33' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 14895
+- value_avg: 15056
+'2021-01-04 16:27:33' preprocessLogger INFO Total rows in dataset: 63,523
+'2021-01-04 16:27:33' preprocessLogger INFO Preprocessing complete!
+
+
+'2021-01-05 07:00:04' preprocessLogger INFO Start preprocessing ...
+'2021-01-05 07:00:15' preprocessLogger INFO LOG FOR PERIOD: 2020-12-31 00:00:00
+'2021-01-05 07:00:15' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+- value: 20210
+'2021-01-05 07:00:15' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 14895
+- value_avg: 15056
+'2021-01-05 07:00:15' preprocessLogger INFO Total rows in dataset: 63,523
+'2021-01-05 07:00:15' preprocessLogger INFO Preprocessing complete!
+
+
+'2021-01-05 10:18:30' preprocessLogger INFO Start preprocessing ...
+'2021-01-05 10:18:41' preprocessLogger INFO LOG FOR PERIOD: 2020-12-31 00:00:00
+'2021-01-05 10:18:41' preprocessLogger INFO # of unique values per (relevant) column in processed df:
+- calculation_date: 37
+- kpi_name: 48
+- period_id: 2
+- product_name: 66
+- cardprofile: 4
+- mandant: 16
+- sector: 3
+- level: 4
+- value: 20210
+'2021-01-05 10:18:41' preprocessLogger INFO # of NaN values per column in processed df:
+- calculation_date: 0
+- kpi_name: 0
+- period_id: 0
+- product_name: 0
+- cardprofile: 0
+- mandant: 0
+- sector: 0
+- level: 0
+- value: 14895
+- value_avg: 15056
+'2021-01-05 10:18:41' preprocessLogger INFO Total rows in dataset: 63,523
+'2021-01-05 10:18:41' preprocessLogger INFO Preprocessing complete!
+
+

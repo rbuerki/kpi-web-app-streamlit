@@ -4,6 +4,7 @@ import pytest
 from pytest import approx
 
 from src import helpers  # noqa
+from src import data_dicts  # noqa
 
 
 def test_return_full_date_list(data_prepared):
@@ -84,9 +85,14 @@ def test_get_filter_options_for_result_dim(n_years, expected):
     assert result == expected
 
 
+# def test_replace_monthly_values_with_avg(data_prepared):
+#     result = helpers.test_replace_monthly_values_with_avg(data_prepared, "Monat", True)
+#     pass
+
+
 def test_calculate_diff_column(data_prepared):
     df = helpers.calculate_diff_column(data_prepared, 1)
-    assert df.shape[1] == 9
+    assert df.shape[1] == 10
     assert list(df.columns)[-1] == "diff_value"
     assert list(df.columns)[0] == "calculation_date"
     df["diff_value"].values == approx(np.array([0.33, np.NaN, np.NaN, np.NaN, np.NaN]))
@@ -99,31 +105,73 @@ def test_create_df_with_actual_period_only(data_prepared):
 
 def test_get_filter_options_for_mandant_groups(data_prepared):
     result = helpers.get_filter_options_for_mandant_groups(data_prepared)
-    assert result == ["[alle]", "Overall", "Liberty", "Simply"]
+    assert result == ["[alle]", "BCAG", "Liberty", "Simply"]
 
 
-@pytest.mark.parametrize(
-    "mandant_filter, expected",
-    [
-        ("[alle]", ["[alle]", "Liberty CC", "Simply", "Liberty PP", "Overall"]),
-        ("Liberty", ["[alle]", "Liberty CC", "Liberty PP"]),
-        ("Overall", ["[alle]", "Liberty CC", "Simply", "Liberty PP", "Overall"]),
-    ],
-)
-def test_get_filter_options_for_entities(data_prepared, mandant_filter, expected):
-    result = helpers.get_filter_options_for_entities(data_prepared, mandant_filter)
-    assert expected == result
+def test_get_filter_options_for_kpi_groups():
+    result = helpers.get_filter_options_for_kpi_groups()
+    assert result == [
+        "[alle] ohne NCA",
+        "[alle]",
+        "Umsatz",
+        "Anzahl Trx",
+        "Anzahl Konten",
+        "NCA",
+    ]
+
+
+def test_get_filter_options_for_entities(data_prepared):
+    result = helpers.get_filter_options_for_entities(data_prepared)
+    assert result == ["[alle]", "Liberty CC", "Simply", "Liberty PP", "BCAG"]
     assert isinstance(result, list)
 
 
 def test_get_filter_options_for_kpi(data_prepared):
     result = helpers.get_filter_options_for_kpi(data_prepared)
-    assert result == ["[alle]", "Umsatz Total", "Umsatz Inland"]
+    assert result == [
+        "[alle]",
+        "Umsatz Total",
+        "Umsatz Inland",
+    ]
     assert isinstance(result, list)
 
 
-def test_filter_sidebar_selections(data_prepared):
+def test_filter_for_sidebar_selections_mandant(data_prepared):
     pass
+
+
+@pytest.mark.parametrize(
+    "kpi_filter, expected",
+    [
+        (
+            "[alle]",
+            [
+                "Umsatz Total",
+                "Nr. TRX Total",
+                "NCAs: xy",
+                "Anzahl gültige Konten",
+                "NCAs: yz",
+            ],
+        ),
+        ("Anzahl Trx", ["Nr. TRX Total"]),
+        ("NCA", ["NCAs: xy", "NCAs: yz"]),
+        (
+            "[alle] ohne NCA",
+            ["Umsatz Total", "Nr. TRX Total", "Anzahl gültige Konten"],
+        ),
+    ],
+)
+def test_filter_for_sidebar_selections_kpi(data_prepared, kpi_filter, expected):
+    data_prepared["kpi_name"] = [
+        "Umsatz Total",
+        "Nr. TRX Total",
+        "NCAs: xy",
+        "Anzahl gültige Konten",
+        "NCAs: yz",
+    ]
+    result = helpers.filter_for_sidebar_selections_kpi(data_prepared, kpi_filter)
+    assert expected == result["kpi_name"].tolist()
+    assert isinstance(result, pd.DataFrame)
 
 
 def test_filter_for_entity_and_kpi(data_prepared):
@@ -143,14 +191,14 @@ def test_create_dict_of_df_for_each_entity(data_prepared):
 
     # def test_impute_missing_mandant(data):
     #     df = helpers.impute_missing_mandant_values(data)
-    #     assert (df["mandant"].values == np.array(["Overall", "Overall"])).all()
+    #     assert (df["mandant"].values == np.array(["BCAG", "BCAG"])).all()
 
     # def test_impute_missing_profile(data):
     #     df = helpers.impute_missing_profile_values(data)
     #     assert (df["profile"].values == np.array(["#NV", "CC"])).all()
 
     # assert df[["mandant", "profile"]].values == np.array(
-    #     [["Overall", "KK"]["nan", "KK"]]
+    #     [["BCAG", "KK"]["nan", "KK"]]
     # )
 
     # def test_load_data_1(mock_dataframe_1):
